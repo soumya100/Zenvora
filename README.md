@@ -6,14 +6,14 @@
 
 A modern, production-grade metasearch engine engineered for zero-tracking discovery.
 
-[![CI Status](https://github.com/your-username/zenvora/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/zenvora/actions)
+[![CI Status](https://github.com/soumya100/zenvora/actions/workflows/ci.yml/badge.svg)](https://github.com/soumya100/zenvora/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61dafb?logo=react)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
 [![Caddy](https://img.shields.io/badge/Reverse_Proxy-Caddy-1F88C0?logo=caddy)](https://caddyserver.com/)
 
-[**Live Demo**](https://zenvora.example) • [**Documentation**](./docs) • [**Deployment Guide**](./docs/deployment.md) • [**Architecture**](./docs/architecture.md)
+[**Live Demo**](https://zenvora-beta.vercel.app/) • [**Documentation**](./docs) • [**Deployment Guide**](./docs/deployment.md) • [**Architecture**](./docs/architecture.md)
 
 </div>
 
