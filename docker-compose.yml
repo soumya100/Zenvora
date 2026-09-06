@@ -1,0 +1,105 @@
+# ==============================================================================
+# Zenvora Production Docker Compose Stack
+# ==============================================================================
+# Architecture:
+#   Public Internet (80/443) -> Caddy Reverse Proxy (TLS/HSTS)
+#     ├─> Frontend Static Web Server (Nginx SPA)
+#     ├─> Backend API Layer (Node.js/Express)
+#           └─> SearXNG Metasearch Engine (:8080 internal)
+#
+# Note: SearXNG and Backend internal ports are NOT exposed to the public Internet.
+# ==============================================================================
+
+services:
+  # Caddy Reverse Proxy & Automatic TLS Termination
+  caddy:
+    image: caddy:2-alpine
+    container_name: zenvora-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 QUIC support
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    networks:
+      - zenvora-internal
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
+  # Zenvora Frontend (React + TypeScript + Tailwind SPA)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zenvora-frontend
+    restart: unless-stopped
+    networks:
+      - zenvora-internal
+
+  # Zenvora Backend (Express + TypeScript API Abstraction Layer)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zenvora-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - SEARXNG_URL=http://searxng:8080
+      - DOMAIN=${DOMAIN:-localhost}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-60}
+      - MOCK_SEARCH=${MOCK_SEARCH:-false}
+    networks:
+      - zenvora-internal
+    depends_on:
+      searxng:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/health', (r) => {if (r.statusCode !== 200) process.exit(1)})"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # SearXNG Metasearch Engine
+  searxng:
+    image: searxng/searxng:latest
+    container_name: zenvora-searxng
+    restart: unless-stopped
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+    environment:
+      - SEARXNG_BASE_URL=http://${DOMAIN:-localhost}/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-zenvora_random_hex_key_for_privacy_production}
+    networks:
+      - zenvora-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  zenvora-internal:
+    driver: bridge
+    name: zenvora-internal-network
+
+volumes:
+  caddy_data:
+    name: zenvora-caddy-data
+  caddy_config:
+    name: zenvora-caddy-config

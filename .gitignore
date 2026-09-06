@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing and coverage
+coverage/
+*.lcov
+
+# Production build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor and OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker and Caddy local data
+caddy_data/
+caddy_config/
+searxng_data/
+docs/free-hosting-guide.md

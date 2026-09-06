@@ -1,0 +1,22 @@
+# ==============================================================================
+# Zenvora Development Docker Compose Override
+# ==============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# ==============================================================================
+
+services:
+  backend:
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MOCK_SEARCH=false
+
+  frontend:
+    ports:
+      - "5173:80"
+
+  searxng:
+    ports:
+      - "8080:8080"

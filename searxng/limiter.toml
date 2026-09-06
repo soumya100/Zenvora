@@ -1,0 +1,9 @@
+# SearXNG rate limiting configuration
+[botdetection]
+ip_limit = 0
+link_token = false
+
+[botdetection.ip_lists]
+pass_searxng_org = false
+pass_ipv6_ll_unicast = true
+pass_local = true

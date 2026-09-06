@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080D1A" />
+    <title>Zenvora — Private. Open. Search.</title>
+    <meta
+      name="description"
+      content="Zenvora is a modern, privacy-focused metasearch engine delivering clean, aggregated search results without tracking, logging, or profiling."
+    />
+    <meta property="og:title" content="Zenvora — Private. Open. Search." />
+    <meta
+      property="og:description"
+      content="Search the web with zero tracking, no query logs, and independent metasearch aggregation."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Zenvora — Private. Open. Search." />
+    <meta
+      name="twitter:description"
+      content="Search the web with zero tracking, no query logs, and independent metasearch aggregation."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      try {
+        const storedTheme = localStorage.getItem('zenvora_theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark) || storedTheme === 'system') {
+          if (storedTheme === 'system') {
+            if (systemPrefersDark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+          } else if (storedTheme === 'dark' || !storedTheme) {
+            document.documentElement.classList.add('dark');
+          }
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body class="bg-zen-bg-light dark:bg-zen-bg-dark text-zen-text-lightPrimary dark:text-zen-text-darkPrimary antialiased transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

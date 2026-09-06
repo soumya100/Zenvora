@@ -1,0 +1,30 @@
+{
+  "name": "zenvora-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zenvora — Modern, Privacy-Focused Metasearch Engine",
+  "scripts": {
+    "build": "npm run build --prefix frontend",
+    "build:all": "npm run build --prefix backend && npm run build --prefix frontend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "test": "npm test --prefix backend && npm test --prefix frontend"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^22.13.4",
+    "@vercel/node": "^3.2.32",
+    "typescript": "^5.7.3"
+  }
+}

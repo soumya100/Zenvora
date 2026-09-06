@@ -1,0 +1,52 @@
+# ==============================================================================
+# Zenvora Reverse Proxy - Caddy Configuration
+# ==============================================================================
+# Automatic HTTPS, HTTP/2 & HTTP/3, TLS certificate provisioning via Let's Encrypt / ZeroSSL,
+# strict privacy headers, and reverse proxy routing.
+# ==============================================================================
+
+{$DOMAIN:localhost} {
+    # Compression for text, html, json, css, js
+    encode zstd gzip
+
+    # Privacy and Security Hardening Headers
+    header {
+        # Strict Transport Security (HSTS - 1 year)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Control referrer leakage
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Disable invasive browser hardware APIs
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+        # Content Security Policy
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https:;"
+        # Remove server identification
+        -Server
+    }
+
+    # API and Health Routing -> Zenvora Backend Container
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            header_up Host {upstream_hostport}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    handle /health {
+        reverse_proxy backend:3000 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    # Frontend Single Page Application Routing -> Frontend Web Container
+    handle {
+        reverse_proxy frontend:80 {
+            header_up Host {upstream_hostport}
+        }
+    }
+}
