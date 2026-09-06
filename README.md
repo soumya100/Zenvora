@@ -1,10 +1,12 @@
+<div align="center">
+
 # Zenvora
 
 ### **Private. Open. Search.**
 
 A modern, production-grade metasearch engine engineered for zero-tracking discovery.
 
-[![CI Status](https://github.com/soumya100/zenvora/actions/workflows/ci.yml/badge.svg)](https://github.com/soumya100/zenvora/actions)
+[![CI Status](https://github.com/your-username/zenvora/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/zenvora/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61dafb?logo=react)](https://react.dev/)
