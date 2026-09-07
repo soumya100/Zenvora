@@ -53,7 +53,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center gap-3 pt-8 pb-12 select-none">
-      <nav className="flex items-center gap-1 sm:gap-2" aria-label="Pagination">
+      <nav className="flex items-center gap-1.5 sm:gap-2" aria-label="Pagination">
         {/* Previous Button */}
         <button
           type="button"
@@ -68,38 +68,45 @@ export const Pagination: React.FC<PaginationProps> = ({
           <span className="hidden sm:inline">Previous</span>
         </button>
 
-        {/* Page Number Buttons */}
-        {pages.map((p, idx) => {
-          if (p === '...') {
+        {/* Mobile Compact Page Indicator */}
+        <div className="flex sm:hidden items-center px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder text-xs font-semibold text-slate-700 dark:text-slate-200">
+          Page {currentPage} of {totalPages.toLocaleString()}
+        </div>
+
+        {/* Desktop / Tablet Full Page Numbers */}
+        <div className="hidden sm:flex items-center gap-1 sm:gap-2">
+          {pages.map((p, idx) => {
+            if (p === '...') {
+              return (
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="w-8 sm:w-10 text-center text-slate-400 dark:text-slate-500 font-bold"
+                >
+                  ...
+                </span>
+              );
+            }
+
+            const pageNum = p as number;
+            const isCurrent = pageNum === currentPage;
+
             return (
-              <span
-                key={`ellipsis-${idx}`}
-                className="w-8 sm:w-10 text-center text-slate-400 dark:text-slate-500 font-bold"
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => onPageChange(pageNum)}
+                aria-current={isCurrent ? 'page' : undefined}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-medium transition-all ${
+                  isCurrent
+                    ? 'bg-cyan-500 text-white font-bold shadow-md shadow-cyan-500/25 scale-105'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-transparent'
+                }`}
               >
-                ...
-              </span>
+                {pageNum}
+              </button>
             );
-          }
-
-          const pageNum = p as number;
-          const isCurrent = pageNum === currentPage;
-
-          return (
-            <button
-              key={pageNum}
-              type="button"
-              onClick={() => onPageChange(pageNum)}
-              aria-current={isCurrent ? 'page' : undefined}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-medium transition-all ${
-                isCurrent
-                  ? 'bg-cyan-500 text-white font-bold shadow-md shadow-cyan-500/25 scale-105'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-transparent'
-              }`}
-            >
-              {pageNum}
-            </button>
-          );
-        })}
+          })}
+        </div>
 
         {/* Next Button */}
         <button

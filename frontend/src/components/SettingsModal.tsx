@@ -50,7 +50,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
               Appearance & Theme
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {[
                 { id: 'dark' as ThemePreference, label: 'Dark', icon: Moon },
                 { id: 'light' as ThemePreference, label: 'Light', icon: Sun },
@@ -60,13 +60,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   key={id}
                   type="button"
                   onClick={() => updateSettings({ theme: id })}
-                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-medium transition-all ${
+                  className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-medium transition-all ${
                     settings.theme === id
                       ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 shadow-sm'
                       : 'border-slate-200 dark:border-zen-bg-darkBorder hover:bg-slate-50 dark:hover:bg-zen-bg-darkCard text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span>{label}</span>
                 </button>
               ))}
@@ -78,7 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
               Logo Color Accent
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {[
                 { id: 'sunset' as LogoScheme, label: 'Sunset Neon', colors: 'from-[#FF7A00] via-[#FF006E] to-[#8338EC]' },
                 { id: 'aurora' as LogoScheme, label: 'Aurora Mint', colors: 'from-[#00F5A0] via-[#00D9F5] to-[#4361EE]' },
@@ -88,14 +88,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   key={item.id}
                   type="button"
                   onClick={() => updateSettings({ logoScheme: item.id })}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border text-xs font-medium transition-all ${
+                  className={`flex flex-col items-center gap-1 sm:gap-1.5 p-2 sm:p-2.5 rounded-xl border text-[11px] sm:text-xs font-medium transition-all ${
                     (settings.logoScheme || 'sunset') === item.id
                       ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 font-bold shadow-sm'
                       : 'border-slate-200 dark:border-zen-bg-darkBorder hover:bg-slate-50 dark:hover:bg-zen-bg-darkCard text-slate-700 dark:text-slate-300'
                   }`}
                 >
-                  <span className={`w-full h-3 rounded-full bg-gradient-to-r ${item.colors}`} />
-                  <span>{item.label}</span>
+                  <span className={`w-full h-2.5 sm:h-3 rounded-full bg-gradient-to-r ${item.colors}`} />
+                  <span className="truncate max-w-full">{item.label}</span>
                 </button>
               ))}
             </div>
@@ -111,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 {settings.safeSearch === 0 ? 'Off' : settings.safeSearch === 1 ? 'Moderate' : 'Strict'}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {[
                 { val: 0, label: 'Off', desc: 'No content filtering' },
                 { val: 1, label: 'Moderate', desc: 'Filters explicit images' },
@@ -121,14 +121,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   key={lvl.val}
                   type="button"
                   onClick={() => updateSettings({ safeSearch: lvl.val })}
-                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                  className={`p-2 sm:p-2.5 rounded-xl border text-left transition-all ${
                     settings.safeSearch === lvl.val
                       ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400'
                       : 'border-slate-200 dark:border-zen-bg-darkBorder hover:bg-slate-50 dark:hover:bg-zen-bg-darkCard text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   <div className="text-xs font-bold">{lvl.label}</div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{lvl.desc}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{lvl.desc}</div>
                 </button>
               ))}
             </div>

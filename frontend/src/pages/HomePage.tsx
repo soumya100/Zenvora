@@ -32,16 +32,16 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-20 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 sm:w-[32rem] h-96 sm:h-[32rem] bg-gradient-to-tr from-amber-500/15 via-rose-500/15 to-violet-500/15 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[32rem] h-72 sm:h-[32rem] bg-gradient-to-tr from-amber-500/15 via-rose-500/15 to-violet-500/15 rounded-full blur-3xl -z-10 pointer-events-none" />
 
       <div className="w-full max-w-3xl flex flex-col items-center text-center">
         <div className="mb-6 transform hover:scale-105 transition-transform duration-300">
           <Logo size="lg" showWordmark={true} />
         </div>
 
-        <p className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200 mb-2">
           Private. Open. Search.
-        </p>
+        </h1>
 
         <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 mb-8 max-w-md">
           Aggregate search results from across the web without query logs, profiling, or tracking cookies.

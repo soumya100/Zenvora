@@ -1,0 +1,17 @@
+{
+  "name": "Zenvora — Private. Open. Search.",
+  "short_name": "Zenvora",
+  "description": "Modern, privacy-focused metasearch engine delivering clean, unbiased search results without tracking, logging, or profiling.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080D1A",
+  "theme_color": "#080D1A",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

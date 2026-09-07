@@ -132,22 +132,24 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <div className={`relative w-full ${className}`}>
-      <form onSubmit={handleSubmit} className="relative w-full">
+      <form onSubmit={handleSubmit} role="search" action="/" method="get" className="relative w-full">
         <div
           className={`group flex items-center w-full transition-all duration-200 rounded-2xl border ${
             isLarge
-              ? 'h-14 sm:h-16 px-4 sm:px-6 bg-white dark:bg-zen-bg-darkSurface shadow-xl dark:shadow-glow-cyan/10 border-slate-200 dark:border-zen-bg-darkBorder focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-4 focus-within:ring-cyan-500/15'
-              : 'h-11 sm:h-12 px-3.5 sm:px-4 bg-slate-100 dark:bg-zen-bg-darkSurface border-slate-200 dark:border-zen-bg-darkBorder focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-500/20'
+              ? 'h-14 sm:h-16 px-3.5 sm:px-6 bg-white dark:bg-zen-bg-darkSurface shadow-xl dark:shadow-glow-cyan/10 border-slate-200 dark:border-zen-bg-darkBorder focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-4 focus-within:ring-cyan-500/15'
+              : 'h-10 sm:h-12 px-3 sm:px-4 bg-slate-100 dark:bg-zen-bg-darkSurface border-slate-200 dark:border-zen-bg-darkBorder focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-2 focus-within:ring-cyan-500/20'
           }`}
         >
           <Search
             className={`${
               isLarge ? 'w-5 sm:w-6 h-5 sm:h-6' : 'w-4 sm:w-5 h-4 sm:h-5'
-            } text-slate-400 dark:text-slate-500 group-focus-within:text-cyan-500 transition-colors duration-200 shrink-0 mr-3`}
+            } text-slate-400 dark:text-slate-500 group-focus-within:text-cyan-500 transition-colors duration-200 shrink-0 mr-2 sm:mr-3`}
           />
 
           <input
             ref={inputRef}
+            id={isLarge ? 'search-input-home' : 'search-input-header'}
+            name="q"
             type="text"
             role="searchbox"
             value={inputValue}
@@ -164,24 +166,25 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             autoComplete="off"
             autoCorrect="off"
             spellCheck="false"
-            className={`w-full bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none ${
-              isLarge ? 'text-base sm:text-lg' : 'text-sm sm:text-base'
+            className={`w-full min-w-0 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none ${
+              isLarge ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'
             }`}
-            aria-label="Search the web"
+            aria-label="Search query"
           />
 
           {inputValue && (
             <button
               type="button"
               onClick={clearInput}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-zen-bg-darkCard transition-colors mr-2"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-zen-bg-darkCard transition-colors mr-1 sm:mr-2 shrink-0"
               title="Clear search query"
+              aria-label="Clear query"
             >
               <X className="w-4 h-4" />
             </button>
           )}
 
-          <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-slate-200 dark:border-zen-bg-darkBorder">
+          <div className="hidden sm:flex items-center gap-1 pl-2 border-l border-slate-200 dark:border-zen-bg-darkBorder shrink-0">
             <kbd className="px-1.5 py-0.5 text-xs font-mono font-medium rounded bg-slate-100 dark:bg-zen-bg-darkCard text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-zen-bg-darkBorder select-none">
               /
             </kbd>
@@ -190,7 +193,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           {isLarge && (
             <button
               type="submit"
-              className="ml-3 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-medium text-sm sm:text-base shadow-md hover:shadow-cyan-500/25 transition-all duration-200 shrink-0"
+              className="ml-2 sm:ml-3 px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-medium text-xs sm:text-base shadow-md hover:shadow-cyan-500/25 transition-all duration-200 shrink-0"
             >
               Search
             </button>
@@ -201,7 +204,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       {isOpen && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 right-0 top-full mt-2 z-50 bg-white dark:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder rounded-2xl shadow-2xl overflow-hidden glass-panel divide-y divide-slate-100 dark:divide-zen-bg-darkBorder/50 animate-fade-in"
+          className="absolute left-0 right-0 top-full mt-2 z-50 max-h-80 overflow-y-auto bg-white dark:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder rounded-2xl shadow-2xl glass-panel divide-y divide-slate-100 dark:divide-zen-bg-darkBorder/50 animate-fade-in"
         >
           <div className="py-1">
             {suggestions.map((suggestion, index) => {

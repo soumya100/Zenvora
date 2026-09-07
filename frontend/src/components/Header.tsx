@@ -25,19 +25,23 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-zen-bg-dark/80 backdrop-blur-md border-b border-slate-200/80 dark:border-zen-bg-darkBorder/60 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-6 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-6 shrink-0">
           <button
             type="button"
             onClick={() => onNavigate('home')}
             className="focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-xl"
             aria-label="Go to Zenvora home"
           >
-            <Logo size={showSearchBar ? 'sm' : 'md'} showWordmark={true} />
+            <Logo
+              size={showSearchBar ? 'sm' : 'md'}
+              showWordmark={true}
+              className={showSearchBar ? '[&>span]:hidden sm:[&>span]:inline' : ''}
+            />
           </button>
         </div>
 
         {showSearchBar && onSearch && (
-          <div className="flex-1 max-w-2xl px-2">
+          <div className="flex-1 min-w-0 max-w-2xl px-1 sm:px-2">
             <SearchBar
               initialValue={searchQuery}
               onSearch={onSearch}
@@ -46,11 +50,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => onNavigate('about')}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
+            className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
               activePage === 'about'
                 ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface'
@@ -63,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('privacy')}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
+            className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
               activePage === 'privacy'
                 ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface'
@@ -74,10 +78,10 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <a
-            href="https://github.com"
+            href="https://github.com/soumya100/Zenvora"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface transition-colors"
+            className="hidden sm:flex p-2 rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface transition-colors"
             title="Source Code on GitHub"
             aria-label="GitHub Repository"
           >

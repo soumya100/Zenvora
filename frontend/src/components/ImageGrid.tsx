@@ -56,10 +56,10 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative max-w-4xl w-full bg-white dark:bg-zen-bg-darkSurface rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-zen-bg-darkBorder"
+            className="relative max-w-4xl w-full bg-white dark:bg-zen-bg-darkSurface rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-zen-bg-darkBorder flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-zen-bg-darkBorder">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-zen-bg-darkBorder shrink-0">
               <div className="truncate pr-4">
                 <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                   {selectedImage.title}
@@ -70,21 +70,22 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
               </div>
               <button
                 onClick={() => setSelectedImage(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkCard transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkCard transition-colors shrink-0"
+                aria-label="Close image preview"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 flex items-center justify-center max-h-[65vh] bg-slate-950/20 dark:bg-black/40 overflow-hidden">
+            <div className="p-3 sm:p-4 flex items-center justify-center flex-1 min-h-0 bg-slate-950/20 dark:bg-black/40 overflow-hidden">
               <img
                 src={selectedImage.imgSrc || selectedImage.thumbnail || selectedImage.url}
                 alt={selectedImage.title}
-                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-md"
+                className="max-h-[55vh] sm:max-h-[60vh] max-w-full object-contain rounded-lg shadow-md"
               />
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-zen-bg-darkCard flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="p-3 sm:p-4 bg-slate-50 dark:bg-zen-bg-darkCard flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm shrink-0">
               <div className="text-xs text-slate-500 dark:text-slate-400">
                 {selectedImage.resolution && (
                   <span className="font-mono mr-3">Resolution: {selectedImage.resolution}</span>
@@ -92,7 +93,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
                 <span>Source: {selectedImage.engine}</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <a
                   href={selectedImage.imgSrc || selectedImage.url}
                   target="_blank"

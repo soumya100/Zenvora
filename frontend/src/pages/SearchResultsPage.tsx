@@ -46,6 +46,9 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      <h1 className="sr-only">
+        Search results for &ldquo;{query}&rdquo;
+      </h1>
       <div className="border-b border-slate-200 dark:border-zen-bg-darkBorder/80 pb-2 mb-4">
         <CategoryTabs
           activeCategory={category}

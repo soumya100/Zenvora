@@ -3,31 +3,102 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080D1A" />
+    <meta name="theme-color" content="#080D1A" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)" />
+
+    <!-- Primary Meta Tags -->
     <title>Zenvora — Private. Open. Search.</title>
+    <meta name="title" content="Zenvora — Private. Open. Search." />
     <meta
       name="description"
       content="Zenvora is a modern, privacy-focused metasearch engine delivering clean, aggregated search results without tracking, logging, or profiling."
     />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://zenvora-beta.vercel.app/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Zenvora" />
+    <meta property="og:url" content="https://zenvora-beta.vercel.app/" />
     <meta property="og:title" content="Zenvora — Private. Open. Search." />
     <meta
       property="og:description"
       content="Search the web with zero tracking, no query logs, and independent metasearch aggregation."
     />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://zenvora-beta.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Zenvora — Private. Open. Search." />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://zenvora-beta.vercel.app/" />
     <meta name="twitter:title" content="Zenvora — Private. Open. Search." />
     <meta
       name="twitter:description"
       content="Search the web with zero tracking, no query logs, and independent metasearch aggregation."
     />
+    <meta name="twitter:image" content="https://zenvora-beta.vercel.app/og-image.png" />
+    <meta name="twitter:creator" content="@zenvora" />
+
+    <!-- Google / Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://zenvora-beta.vercel.app/#website",
+            "url": "https://zenvora-beta.vercel.app/",
+            "name": "Zenvora",
+            "description": "Privacy-focused metasearch engine delivering clean, aggregated search results without tracking, logging, or profiling.",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://zenvora-beta.vercel.app/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://zenvora-beta.vercel.app/#organization",
+            "name": "Zenvora",
+            "url": "https://zenvora-beta.vercel.app/",
+            "logo": "https://zenvora-beta.vercel.app/favicon.svg",
+            "sameAs": ["https://github.com/soumya100/Zenvora"]
+          }
+        ]
+      }
+    </script>
+
+    <!-- Font Loading Optimization to Prevent Layout Shifts (CLS) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
+
+    <!-- Theme Initialization Script (Prevents FOUC) -->
     <script>
       try {
         const storedTheme = localStorage.getItem('zenvora_theme');

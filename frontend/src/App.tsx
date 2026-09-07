@@ -45,6 +45,41 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Dynamic SEO Title & Meta Description Sync
+  useEffect(() => {
+    let title = 'Zenvora — Private. Open. Search.';
+    let description =
+      'Zenvora is a modern, privacy-focused metasearch engine delivering clean, aggregated search results without tracking, logging, or profiling.';
+
+    if (activePage === 'results' && query.trim()) {
+      title = `${query.trim()} — Zenvora Search`;
+      description = `Aggregated privacy-first search results for "${query.trim()}". Zero logs, zero tracking cookies.`;
+    } else if (activePage === 'privacy') {
+      title = 'Privacy Policy & Architecture — Zenvora';
+      description =
+        'Learn how Zenvora protects user privacy with zero search query history, zero behavioral profiling, and upstream proxy masking.';
+    } else if (activePage === 'about') {
+      title = 'About Zenvora — Independent Web Metasearch';
+      description =
+        'Discover the mission and open-source architecture behind Zenvora, the privacy-first metasearch aggregation engine.';
+    }
+
+    document.title = title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', description);
+    }
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) {
+      ogTitle.setAttribute('content', title);
+    }
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) {
+      ogDesc.setAttribute('content', description);
+    }
+  }, [activePage, query]);
+
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
