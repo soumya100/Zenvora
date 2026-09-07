@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Keyboard } from 'lucide-react';
+import { useTranslation } from '../utils/i18n';
 
 interface ShortcutsModalProps {
   isOpen: boolean;
@@ -7,16 +8,18 @@ interface ShortcutsModalProps {
 }
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
+
   if (!isOpen) return null;
 
   const shortcuts = [
-    { key: '/', desc: 'Focus the search input bar' },
-    { key: 'Ctrl + K / ⌘ + K', desc: 'Alternative focus shortcut' },
-    { key: 'Esc', desc: 'Close modals or clear active suggestions' },
-    { key: '↑ / ↓', desc: 'Navigate through autocomplete suggestions' },
-    { key: 'Enter', desc: 'Execute query / select suggestion' },
+    { key: '/', desc: t('shortcutFocus') },
+    { key: 'Ctrl + K / ⌘ + K', desc: t('shortcutFocus') },
+    { key: 'Esc', desc: t('shortcutEscape') },
+    { key: '↑ / ↓', desc: 'Navigate autocomplete suggestions' },
+    { key: 'Enter', desc: 'Execute query / select' },
     { key: 't', desc: 'Quickly toggle Dark / Light mode' },
-    { key: '?', desc: 'Open this keyboard shortcuts reference' },
+    { key: '?', desc: t('shortcutHelp') },
   ];
 
   return (
@@ -32,7 +35,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
           <div className="flex items-center gap-2">
             <Keyboard className="w-5 h-5 text-cyan-500" />
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              Keyboard Shortcuts
+              {t('shortcutsTitle')}
             </h2>
           </div>
           <button

@@ -3,3 +3,4 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://zenvora-beta.vercel.app/sitemap.xml
+Host: https://zenvora-beta.vercel.app

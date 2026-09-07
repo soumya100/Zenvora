@@ -3,6 +3,7 @@ import { Search, X, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { searchApi } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useSettings } from '../hooks/useSettings';
+import { useTranslation } from '../utils/i18n';
 
 interface SearchBarProps {
   initialValue?: string;
@@ -20,6 +21,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   className = '',
 }) => {
   const { settings } = useSettings();
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
@@ -161,7 +163,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             onFocus={() => {
               if (suggestions.length > 0) setIsOpen(true);
             }}
-            placeholder="Search the web privately..."
+            placeholder={t('searchPlaceholder')}
             autoFocus={autoFocus}
             autoComplete="off"
             autoCorrect="off"
@@ -169,7 +171,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             className={`w-full min-w-0 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none ${
               isLarge ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'
             }`}
-            aria-label="Search query"
+            aria-label={t('searchLabel')}
           />
 
           {inputValue && (
@@ -177,8 +179,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               type="button"
               onClick={clearInput}
               className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-zen-bg-darkCard transition-colors mr-1 sm:mr-2 shrink-0"
-              title="Clear search query"
-              aria-label="Clear query"
+              title={t('clearSearch')}
+              aria-label={t('clearSearch')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -195,7 +197,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               type="submit"
               className="ml-2 sm:ml-3 px-3.5 sm:px-6 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-medium text-xs sm:text-base shadow-md hover:shadow-cyan-500/25 transition-all duration-200 shrink-0"
             >
-              Search
+              {t('searchButton')}
             </button>
           )}
         </div>

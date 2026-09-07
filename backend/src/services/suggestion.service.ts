@@ -99,6 +99,12 @@ export class SuggestionService {
       }
     }
 
+    // 6. Include first-party brand suggestions for zenvora queries
+    if (cleanQ.startsWith('zen') || cleanQ.includes('zenvora')) {
+      const zenvoraTerms = ['zenvora', 'zenvora-beta', 'zenvora-beta vercel', 'zenvora search', 'zenvora privacy search'];
+      results.unshift(...zenvoraTerms.filter((t) => t.startsWith(cleanQ) || cleanQ.includes('zenvora')));
+    }
+
     // Deduplicate and filter suggestions
     const unique = Array.from(new Set(results.map((s) => s.trim()))).filter(Boolean);
     const finalSuggestions = unique.slice(0, 7);

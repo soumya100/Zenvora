@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from '../utils/i18n';
 
 interface PaginationProps {
   currentPage: number;
@@ -16,6 +17,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   resultsPerPage = 10,
   hasMore = true,
 }) => {
+  const { t } = useTranslation();
+
   // 1. Calculate total pages
   let calculatedTotalPages = 1;
   if (typeof totalResults === 'number' && totalResults > 0) {
@@ -62,15 +65,15 @@ export const Pagination: React.FC<PaginationProps> = ({
             if (currentPage > 1) onPageChange(currentPage - 1);
           }}
           className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder"
-          aria-label="Previous page"
+          aria-label={t('prevPage')}
         >
           <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Previous</span>
+          <span className="hidden sm:inline">{t('prevPage')}</span>
         </button>
 
         {/* Mobile Compact Page Indicator */}
         <div className="flex sm:hidden items-center px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder text-xs font-semibold text-slate-700 dark:text-slate-200">
-          Page {currentPage} of {totalPages.toLocaleString()}
+          {t('pageNumber', { page: currentPage, totalPages: totalPages.toLocaleString() })}
         </div>
 
         {/* Desktop / Tablet Full Page Numbers */}
@@ -116,9 +119,9 @@ export const Pagination: React.FC<PaginationProps> = ({
             if (currentPage < totalPages && hasMore) onPageChange(currentPage + 1);
           }}
           className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder"
-          aria-label="Next page"
+          aria-label={t('nextPage')}
         >
-          <span className="hidden sm:inline">Next</span>
+          <span className="hidden sm:inline">{t('nextPage')}</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </nav>

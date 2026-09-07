@@ -1,7 +1,7 @@
 {
-  "name": "Zenvora — Private. Open. Search.",
-  "short_name": "Zenvora",
-  "description": "Modern, privacy-focused metasearch engine delivering clean, unbiased search results without tracking, logging, or profiling.",
+  "name": "Zenvora (zenvora-beta) — Private. Open. Search.",
+  "short_name": "Zenvora Beta",
+  "description": "Zenvora (zenvora-beta.vercel.app) is an independent, privacy-focused metasearch engine delivering clean, unbiased search results without tracking, logging, or profiling.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080D1A",

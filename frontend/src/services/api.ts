@@ -8,6 +8,7 @@ export interface SearchParams {
   page?: number;
   safesearch?: number;
   language?: string;
+  region?: string;
   timeRange?: string;
 }
 
@@ -19,6 +20,7 @@ export class SearchApiService {
     if (params.page) url.searchParams.set('page', params.page.toString());
     if (params.safesearch !== undefined) url.searchParams.set('safesearch', params.safesearch.toString());
     if (params.language && params.language !== 'auto') url.searchParams.set('language', params.language);
+    if (params.region && params.region !== 'auto') url.searchParams.set('region', params.region);
     if (params.timeRange) url.searchParams.set('timeRange', params.timeRange);
 
     const response = await fetch(url.toString(), {

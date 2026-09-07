@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useTranslation } from '../utils/i18n';
 
 interface ErrorStateProps {
   message?: string;
@@ -7,9 +8,11 @@ interface ErrorStateProps {
 }
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
-  message = "Zenvora couldn't reach the search service. Please try again in a moment.",
+  message,
   onRetry,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="py-12 px-4 text-center max-w-md mx-auto animate-fade-in">
       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 flex items-center justify-center text-amber-500">
@@ -17,11 +20,11 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       </div>
 
       <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-        Search Temporarily Unavailable
+        {t('errorTitle')}
       </h3>
 
       <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-        {message}
+        {message || t('errorDesc')}
       </p>
 
       {onRetry && (
@@ -31,7 +34,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-medium text-sm shadow-md shadow-cyan-500/20 transition-all hover:scale-[1.02]"
         >
           <RefreshCw className="w-4 h-4" />
-          Retry Search
+          {t('retryButton')}
         </button>
       )}
     </div>

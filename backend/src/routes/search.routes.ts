@@ -34,6 +34,7 @@ const searchQuerySchema = z.object({
     .optional()
     .default(1),
   language: z.string().max(10).optional().default('auto'),
+  region: z.string().max(10).optional().default('auto'),
   timeRange: z.enum(['', 'day', 'week', 'month', 'year']).optional().default(''),
 });
 
@@ -67,7 +68,7 @@ router.get(
         return;
       }
 
-      const { q, category, page, safesearch, language, timeRange } = validation.data;
+      const { q, category, page, safesearch, language, region, timeRange } = validation.data;
 
       const results = await searxngService.search({
         q,
@@ -75,6 +76,7 @@ router.get(
         page,
         safesearch,
         language,
+        region,
         timeRange,
       });
 

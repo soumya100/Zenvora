@@ -1,6 +1,7 @@
 import React from 'react';
 import { SearchCategory } from '../types';
 import { Globe, Newspaper, Image, Film, FlaskConical, Terminal } from 'lucide-react';
+import { useTranslation, TranslationKey } from '../utils/i18n';
 
 interface CategoryTabsProps {
   activeCategory: SearchCategory;
@@ -10,17 +11,17 @@ interface CategoryTabsProps {
 
 interface CategoryConfig {
   id: SearchCategory;
-  label: string;
+  translationKey: TranslationKey;
   icon: React.FC<{ className?: string }>;
 }
 
 const CATEGORIES: CategoryConfig[] = [
-  { id: 'general', label: 'All', icon: Globe },
-  { id: 'news', label: 'News', icon: Newspaper },
-  { id: 'images', label: 'Images', icon: Image },
-  { id: 'videos', label: 'Videos', icon: Film },
-  { id: 'science', label: 'Science', icon: FlaskConical },
-  { id: 'it', label: 'IT & Code', icon: Terminal },
+  { id: 'general', translationKey: 'catAll', icon: Globe },
+  { id: 'news', translationKey: 'catNews', icon: Newspaper },
+  { id: 'images', translationKey: 'catImages', icon: Image },
+  { id: 'videos', translationKey: 'catVideos', icon: Film },
+  { id: 'science', translationKey: 'catScience', icon: FlaskConical },
+  { id: 'it', translationKey: 'catIt', icon: Terminal },
 ];
 
 export const CategoryTabs: React.FC<CategoryTabsProps> = ({
@@ -28,6 +29,8 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
   onSelectCategory,
   className = '',
 }) => {
+  const { t } = useTranslation();
+
   return (
     <nav className={`flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 scrollbar-none select-none ${className}`} aria-label="Search Categories">
       {CATEGORIES.map((cat) => {
@@ -48,7 +51,7 @@ export const CategoryTabs: React.FC<CategoryTabsProps> = ({
             }`}
           >
             <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-500' : 'text-slate-400'}`} />
-            <span>{cat.label}</span>
+            <span>{t(cat.translationKey)}</span>
           </button>
         );
       })}

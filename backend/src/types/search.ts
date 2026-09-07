@@ -12,6 +12,7 @@ export interface ZenvoraSearchQuery {
   page?: number;
   safesearch?: number; // 0 = off, 1 = moderate, 2 = strict
   language?: string;
+  region?: string;
   timeRange?: string; // day, week, month, year
 }
 

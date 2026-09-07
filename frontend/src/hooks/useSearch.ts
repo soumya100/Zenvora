@@ -18,6 +18,11 @@ export function useSearch() {
   const categoryRef = useRef<SearchCategory>(category);
   const resultsRef = useRef<SearchResultItem[]>([]);
   const settingsRef = useRef(settings);
+  const lastSettingsRef = useRef({
+    language: settings.language,
+    region: settings.region,
+    safeSearch: settings.safeSearch,
+  });
 
   useEffect(() => {
     categoryRef.current = category;
@@ -56,7 +61,7 @@ export function useSearch() {
         return;
       }
 
-      const searchKey = `${cleanQ}:${searchCategory}:${searchPage}`;
+      const searchKey = `${cleanQ}:${searchCategory}:${searchPage}:${settingsRef.current.language}:${settingsRef.current.region}:${settingsRef.current.safeSearch}`;
       if (
         lastSearchedKeyRef.current === searchKey &&
         !appendResults &&
@@ -112,6 +117,7 @@ export function useSearch() {
             page: searchPage,
             safesearch: settingsRef.current.safeSearch,
             language: settingsRef.current.language,
+            region: settingsRef.current.region,
           },
           controller.signal
         );
@@ -148,6 +154,28 @@ export function useSearch() {
     },
     []
   );
+
+  useEffect(() => {
+    const prev = lastSettingsRef.current;
+    const changed =
+      prev.language !== settings.language ||
+      prev.region !== settings.region ||
+      prev.safeSearch !== settings.safeSearch;
+
+    settingsRef.current = settings;
+    lastSettingsRef.current = {
+      language: settings.language,
+      region: settings.region,
+      safeSearch: settings.safeSearch,
+    };
+
+    if (changed) {
+      lastSearchedKeyRef.current = '';
+      if (query && resultsRef.current.length > 0) {
+        executeSearch(query, categoryRef.current, page, false, false);
+      }
+    }
+  }, [settings.language, settings.region, settings.safeSearch, query, page, executeSearch]);
 
   useEffect(() => {
     const parseUrlParams = () => {

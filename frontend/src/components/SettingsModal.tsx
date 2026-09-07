@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Shield, Sliders, Moon, Sun, Monitor, CheckCircle2 } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 import { SearchCategory, ThemePreference, LogoScheme } from '../types';
+import { useTranslation } from '../utils/i18n';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings } = useSettings();
+  const { t } = useTranslation();
 
   if (!isOpen) return null;
 
@@ -29,10 +31,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Search Preferences
+                {t('settingsTitle')}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Saved locally in your browser. Zero cloud tracking.
+                {t('settingsSubtitle')}
               </p>
             </div>
           </div>
@@ -48,13 +50,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         <div className="p-6 overflow-y-auto space-y-6">
           <div>
             <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              Appearance & Theme
+              {t('appearance')}
             </label>
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {[
-                { id: 'dark' as ThemePreference, label: 'Dark', icon: Moon },
-                { id: 'light' as ThemePreference, label: 'Light', icon: Sun },
-                { id: 'system' as ThemePreference, label: 'System', icon: Monitor },
+                { id: 'dark' as ThemePreference, label: t('themeDark'), icon: Moon },
+                { id: 'light' as ThemePreference, label: t('themeLight'), icon: Sun },
+                { id: 'system' as ThemePreference, label: t('themeSystem'), icon: Monitor },
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -105,17 +107,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                 <Shield className="w-4 h-4 text-cyan-500" />
-                SafeSearch Filtering
+                {t('safeSearch')}
               </label>
               <span className="text-xs text-slate-400">
-                {settings.safeSearch === 0 ? 'Off' : settings.safeSearch === 1 ? 'Moderate' : 'Strict'}
+                {settings.safeSearch === 0 ? t('safeSearchOff') : settings.safeSearch === 1 ? t('safeSearchModerate') : t('safeSearchStrict')}
               </span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {[
-                { val: 0, label: 'Off', desc: 'No content filtering' },
-                { val: 1, label: 'Moderate', desc: 'Filters explicit images' },
-                { val: 2, label: 'Strict', desc: 'Filters all explicit content' },
+                { val: 0, label: t('safeSearchOff'), desc: t('safeSearchOffDesc') },
+                { val: 1, label: t('safeSearchModerate'), desc: t('safeSearchModerateDesc') },
+                { val: 2, label: t('safeSearchStrict'), desc: t('safeSearchStrictDesc') },
               ].map((lvl) => (
                 <button
                   key={lvl.val}
@@ -136,33 +138,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           <div>
             <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              Default Category
+              {t('defaultCategory')}
             </label>
             <select
               value={settings.defaultCategory}
               onChange={(e) => updateSettings({ defaultCategory: e.target.value as SearchCategory })}
               className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
-              <option value="general">General (All Web)</option>
-              <option value="news">News</option>
-              <option value="images">Images</option>
-              <option value="videos">Videos</option>
-              <option value="science">Science & Academic</option>
-              <option value="it">IT & Code</option>
+              <option value="general">{t('catAll')}</option>
+              <option value="news">{t('catNews')}</option>
+              <option value="images">{t('catImages')}</option>
+              <option value="videos">{t('catVideos')}</option>
+              <option value="science">{t('catScience')}</option>
+              <option value="it">{t('catIt')}</option>
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                Interface Language
+                {t('interfaceLanguage')}
               </label>
               <select
                 value={settings.language}
                 onChange={(e) => updateSettings({ language: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <option value="auto">Automatic (Browser Default)</option>
+                <option value="auto">{t('langAuto')}</option>
                 <option value="en">English</option>
                 <option value="es">Español</option>
                 <option value="fr">Français</option>
@@ -174,20 +176,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
             <div>
               <label className="block text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                Search Region
+                {t('searchRegion')}
               </label>
               <select
                 value={settings.region}
                 onChange={(e) => updateSettings({ region: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <option value="auto">Global / Auto</option>
-                <option value="us">United States</option>
-                <option value="gb">United Kingdom</option>
-                <option value="de">Germany</option>
-                <option value="fr">France</option>
-                <option value="in">India</option>
-                <option value="jp">Japan</option>
+                <option value="auto">{t('regionAuto')}</option>
+                <option value="us">{t('regionUS')}</option>
+                <option value="gb">{t('regionGB')}</option>
+                <option value="de">{t('regionDE')}</option>
+                <option value="fr">{t('regionFR')}</option>
+                <option value="in">{t('regionIN')}</option>
+                <option value="jp">{t('regionJP')}</option>
               </select>
             </div>
           </div>
@@ -196,10 +198,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <label className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder cursor-pointer">
               <div className="pr-4">
                 <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 block">
-                  Open links in new tab
+                  {t('openLinksNewTab')}
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                  Opens clicked search results in a fresh browser tab
+                  {t('openLinksNewTabDesc')}
                 </span>
               </div>
               <input
@@ -245,7 +247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             onClick={onClose}
             className="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold shadow-md transition-colors"
           >
-            Save & Close
+            {t('saveAndClose')}
           </button>
         </div>
       </div>

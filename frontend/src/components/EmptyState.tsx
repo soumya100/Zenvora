@@ -1,5 +1,6 @@
 import React from 'react';
 import { SearchX, HelpCircle, Lightbulb } from 'lucide-react';
+import { useTranslation } from '../utils/i18n';
 
 interface EmptyStateProps {
   query: string;
@@ -7,6 +8,7 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ query, onSuggestionClick }) => {
+  const { t } = useTranslation();
   const suggestions = [
     'Linux server security',
     'Self-hosted privacy tools',
@@ -21,11 +23,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ query, onSuggestionClick
       </div>
 
       <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-        No results found for &ldquo;{query}&rdquo;
+        {t('noResultsTitle')}: &ldquo;{query}&rdquo;
       </h3>
 
       <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-        Your query didn't match any indexed content across the configured upstream engines.
+        {t('noResultsDesc')}
       </p>
 
       <div className="p-5 rounded-2xl bg-slate-50 dark:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder text-left mb-6">

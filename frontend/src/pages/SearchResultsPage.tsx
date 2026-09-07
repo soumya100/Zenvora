@@ -11,6 +11,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { SearchCategory, SearchResponse, SearchResultItem } from '../types';
 import { Zap, Clock, ShieldCheck } from 'lucide-react';
+import { useTranslation } from '../utils/i18n';
 
 interface SearchResultsPageProps {
   query: string;
@@ -39,6 +40,8 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   onRetry,
   onNewSearch,
 }) => {
+  const { t } = useTranslation();
+
   const formatNumber = (num?: number) => {
     if (!num) return '0';
     return new Intl.NumberFormat().format(num);
@@ -47,7 +50,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   return (
     <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
       <h1 className="sr-only">
-        Search results for &ldquo;{query}&rdquo;
+        {t('searchLabel')}: &ldquo;{query}&rdquo;
       </h1>
       <div className="border-b border-slate-200 dark:border-zen-bg-darkBorder/80 pb-2 mb-4">
         <CategoryTabs
@@ -60,16 +63,14 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
         <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 mb-4 px-1 select-none">
           <div className="flex items-center gap-2">
             <span>
-              About {formatNumber(response.numberOfResults)} results
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {response.searchDuration}s
+              {t('resultsCount', {
+                count: formatNumber(response.numberOfResults),
+                duration: response.searchDuration,
+              })}
             </span>
             {response.cached && (
               <span className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-mono">
-                <Zap className="w-2.5 h-2.5" /> cached
+                <Zap className="w-2.5 h-2.5" /> {t('cached')}
               </span>
             )}
           </div>

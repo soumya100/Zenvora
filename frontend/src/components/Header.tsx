@@ -4,6 +4,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { SearchBar } from './SearchBar';
 import { Settings, Shield, Info, Github } from 'lucide-react';
 import { ActivePage } from '../types';
+import { useTranslation } from '../utils/i18n';
 
 interface HeaderProps {
   activePage: ActivePage;
@@ -22,6 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery = '',
   onSearch,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-zen-bg-dark/80 backdrop-blur-md border-b border-slate-200/80 dark:border-zen-bg-darkBorder/60 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -30,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={() => onNavigate('home')}
             className="focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded-xl"
-            aria-label="Go to Zenvora home"
+            aria-label={t('backToHome')}
           >
             <Logo
               size={showSearchBar ? 'sm' : 'md'}
@@ -61,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Info className="w-4 h-4" />
-            <span>About</span>
+            <span>{t('about')}</span>
           </button>
 
           <button
@@ -74,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Shield className="w-4 h-4" />
-            <span>Privacy</span>
+            <span>{t('privacy')}</span>
           </button>
 
           <a
@@ -82,8 +85,8 @@ export const Header: React.FC<HeaderProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:flex p-2 rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface transition-colors"
-            title="Source Code on GitHub"
-            aria-label="GitHub Repository"
+            title={t('github')}
+            aria-label={t('github')}
           >
             <Github className="w-5 h-5" />
           </a>
@@ -94,8 +97,8 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenSettings}
             className="p-2 rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface transition-colors"
-            title="Search Settings"
-            aria-label="Open settings"
+            title={t('settings')}
+            aria-label={t('settings')}
           >
             <Settings className="w-5 h-5" />
           </button>

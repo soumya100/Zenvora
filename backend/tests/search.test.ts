@@ -52,6 +52,28 @@ describe('Search API Endpoints', () => {
       expect(newsRes.status).toBe(200);
       expect(newsRes.body.category).toBe('news');
     }, 15000);
+
+    it('accepts and applies language and region parameters', async () => {
+      const regionRes = await request(app).get('/api/search?q=open+source&language=de&region=de');
+      expect(regionRes.status).toBe(200);
+      expect(regionRes.body.query).toBe('open source');
+      expect(Array.isArray(regionRes.body.results)).toBe(true);
+    }, 15000);
+
+    it('returns official zenvora result and infobox for zenvora brand queries', async () => {
+      const queries = ['zenvora', 'zenvora-beta', 'zenvora-beta vercel'];
+      for (const q of queries) {
+        const res = await request(app).get(`/api/search?q=${encodeURIComponent(q)}`);
+        expect(res.status).toBe(200);
+        expect(res.body.results.length).toBeGreaterThan(0);
+        const hasOfficial = res.body.results.some((r: any) =>
+          r.url.includes('zenvora-beta.vercel.app')
+        );
+        expect(hasOfficial).toBe(true);
+        expect(res.body.infoboxes.length).toBeGreaterThan(0);
+        expect(res.body.infoboxes[0].title).toContain('Zenvora');
+      }
+    }, 20000);
   });
 
   describe('GET /api/suggestions', () => {
@@ -61,6 +83,13 @@ describe('Search API Endpoints', () => {
       expect(res.body.query).toBe('linux');
       expect(Array.isArray(res.body.suggestions)).toBe(true);
       expect(res.body.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('returns branded suggestions for "zen" prefix', async () => {
+      const res = await request(app).get('/api/suggestions?q=zen');
+      expect(res.status).toBe(200);
+      expect(res.body.suggestions).toContain('zenvora');
+      expect(res.body.suggestions).toContain('zenvora-beta');
     });
 
     it('returns empty array when query is empty', async () => {

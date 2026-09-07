@@ -73,17 +73,48 @@ function sanitizeSnippet(text?: string): string {
 /**
  * Live Web Search Provider (Yahoo / Bing global index aggregator)
  */
-async function fetchYahooWebResults(searchQuery: string, page: number = 1): Promise<ZenvoraResultItem[]> {
+async function fetchYahooWebResults(
+  searchQuery: string,
+  page: number = 1,
+  language: string = 'auto',
+  region: string = 'auto'
+): Promise<ZenvoraResultItem[]> {
   try {
     const b = (page - 1) * 7 + 1;
-    const url = `https://search.yahoo.com/search?p=${encodeURIComponent(searchQuery)}&b=${b}`;
+    const reg = (region || 'auto').toLowerCase();
+    const lang = (language || 'auto').toLowerCase();
+
+    let domain = 'search.yahoo.com';
+    let acceptLang = 'en-US,en;q=0.9';
+
+    if (reg === 'de' || lang === 'de') {
+      domain = 'de.search.yahoo.com';
+      acceptLang = 'de-DE,de;q=0.9,en;q=0.8';
+    } else if (reg === 'fr' || lang === 'fr') {
+      domain = 'fr.search.yahoo.com';
+      acceptLang = 'fr-FR,fr;q=0.9,en;q=0.8';
+    } else if (reg === 'es' || lang === 'es') {
+      domain = 'es.search.yahoo.com';
+      acceptLang = 'es-ES,es;q=0.9,en;q=0.8';
+    } else if (reg === 'in') {
+      domain = 'in.search.yahoo.com';
+      acceptLang = 'en-IN,en;q=0.9,hi;q=0.8';
+    } else if (reg === 'gb') {
+      domain = 'uk.search.yahoo.com';
+      acceptLang = 'en-GB,en;q=0.9';
+    } else if (reg === 'jp' || lang === 'ja') {
+      domain = 'search.yahoo.co.jp';
+      acceptLang = 'ja-JP,ja;q=0.9,en;q=0.8';
+    }
+
+    const url = `https://${domain}/search?p=${encodeURIComponent(searchQuery)}&b=${b}`;
     const res = await axios.get(url, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         Accept:
           'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Language': acceptLang,
       },
       timeout: 5000,
     });
@@ -144,11 +175,29 @@ async function fetchYahooWebResults(searchQuery: string, page: number = 1): Prom
 /**
  * DuckDuckGo HTML Web Search Provider
  */
-async function fetchDuckDuckGoWebResults(searchQuery: string, page: number = 1): Promise<ZenvoraResultItem[]> {
+async function fetchDuckDuckGoWebResults(
+  searchQuery: string,
+  page: number = 1,
+  language: string = 'auto',
+  region: string = 'auto'
+): Promise<ZenvoraResultItem[]> {
   try {
+    const reg = (region || 'auto').toLowerCase();
+    const lang = (language || 'auto').toLowerCase();
+    let kl = 'us-en';
+    if (reg === 'de' || lang === 'de') kl = 'de-de';
+    else if (reg === 'fr' || lang === 'fr') kl = 'fr-fr';
+    else if (reg === 'es' || lang === 'es') kl = 'es-es';
+    else if (reg === 'jp' || lang === 'ja') kl = 'jp-jp';
+    else if (reg === 'in') kl = 'in-en';
+    else if (reg === 'gb') kl = 'uk-en';
+    else if (reg === 'us') kl = 'us-en';
+    else if (lang === 'zh') kl = 'cn-zh';
+
+    const postBody = `q=${encodeURIComponent(searchQuery)}&kl=${kl}`;
     const res = await axios.post(
       'https://html.duckduckgo.com/html/',
-      `q=${encodeURIComponent(searchQuery)}`,
+      postBody,
       {
         headers: {
           'User-Agent':
@@ -198,6 +247,74 @@ async function fetchDuckDuckGoWebResults(searchQuery: string, page: number = 1):
     return results;
   } catch {
     return [];
+  }
+}
+
+/**
+ * Automatically augment first-party verified official results for Zenvora brand queries
+ */
+function augmentZenvoraResults(
+  query: string,
+  category: ZenvoraCategory,
+  page: number,
+  results: ZenvoraResultItem[],
+  infoboxes: ZenvoraInfobox[]
+) {
+  const cleanQ = query.toLowerCase().replace(/[-_ ]+/g, ' ').trim();
+  const isZenvoraQuery =
+    cleanQ === 'zenvora' ||
+    cleanQ === 'zenvora beta' ||
+    cleanQ === 'zenvora beta vercel' ||
+    cleanQ === 'zenvora vercel' ||
+    cleanQ === 'zenvora search' ||
+    cleanQ === 'zenvora engine';
+
+  if (isZenvoraQuery && page === 1 && (category === 'general' || category === 'it')) {
+    const hasOfficialSite = results.some((r) => r.url.includes('zenvora-beta.vercel.app'));
+    if (!hasOfficialSite) {
+      results.unshift({
+        id: 'zenvora-official-site',
+        title: 'Zenvora (zenvora-beta) — Private. Open. Search. | zenvora-beta.vercel.app',
+        url: 'https://zenvora-beta.vercel.app/',
+        domain: 'zenvora-beta.vercel.app',
+        snippet:
+          'Official deployment of Zenvora on Vercel (zenvora-beta.vercel.app). Pure search with zero footprint. Fast, aggregated, privacy-first search results across global web indices without commercial user profiling.',
+        engine: 'zenvora',
+        engines: ['zenvora', 'verified', 'official'],
+        category: 'general',
+      });
+    }
+
+    const hasRepo = results.some((r) => r.url.includes('github.com/soumya100/Zenvora'));
+    if (!hasRepo) {
+      results.splice(1, 0, {
+        id: 'zenvora-github-repo',
+        title: 'soumya100/Zenvora: Private. Open. Search. - GitHub',
+        url: 'https://github.com/soumya100/Zenvora',
+        domain: 'github.com',
+        snippet:
+          'Official GitHub repository for Zenvora. A modern, production-grade metasearch engine engineered for zero-tracking discovery. Deployed at zenvora-beta.vercel.app.',
+        engine: 'github',
+        engines: ['github', 'open-source'],
+        category: 'it',
+      });
+    }
+
+    const hasInfobox = infoboxes.some((b) => b.title.toLowerCase().includes('zenvora'));
+    if (!hasInfobox) {
+      infoboxes.unshift({
+        title: 'Zenvora (zenvora-beta)',
+        content:
+          'Zenvora is an open-source, privacy-first metasearch engine deployed at zenvora-beta.vercel.app. It delivers aggregated web discovery without query logs, behavioral profiling, or tracking cookies, using client-side preference encryption.',
+        url: 'https://zenvora-beta.vercel.app/',
+        attributes: [
+          { label: 'Official Deployment', value: 'https://zenvora-beta.vercel.app' },
+          { label: 'Platform', value: 'Vercel Serverless / Node.js / React' },
+          { label: 'Repository', value: 'github.com/soumya100/Zenvora' },
+          { label: 'Privacy Standard', value: 'Zero Query Logs & Zero Cookies' },
+        ],
+      });
+    }
   }
 }
 
@@ -504,16 +621,16 @@ async function fetchLiveMetasearch(
     try {
       // A. Query Live Global Web Index (Yahoo and DuckDuckGo in parallel)
       let [webYahoo, webDDG] = await Promise.all([
-        fetchYahooWebResults(query, page),
-        fetchDuckDuckGoWebResults(query, page),
+        fetchYahooWebResults(query, page, params.language, params.region),
+        fetchDuckDuckGoWebResults(query, page, params.language, params.region),
       ]);
 
       // If a hyphenated/underscored query returns 0 results, also query with spaces (e.g. "soumyadeep-nandi-portfolio" -> "soumyadeep nandi portfolio")
       if (webYahoo.length === 0 && webDDG.length === 0 && (query.includes('-') || query.includes('_'))) {
         const spacedQuery = query.replace(/[-_]+/g, ' ');
         const [spacedYahoo, spacedDDG] = await Promise.all([
-          fetchYahooWebResults(spacedQuery, page),
-          fetchDuckDuckGoWebResults(spacedQuery, page),
+          fetchYahooWebResults(spacedQuery, page, params.language, params.region),
+          fetchDuckDuckGoWebResults(spacedQuery, page, params.language, params.region),
         ]);
         webYahoo = spacedYahoo;
         webDDG = spacedDDG;
@@ -537,7 +654,21 @@ async function fetchLiveMetasearch(
     // B. Wikipedia Knowledge Fallback / Augmentation (only if under 4 results)
     if (results.length < 4) {
       try {
-        const wikiRes = await axios.get('https://en.wikipedia.org/w/api.php', {
+        const lang = (params.language || 'auto').toLowerCase();
+        const reg = (params.region || 'auto').toLowerCase();
+        let wikiLang = 'en';
+        if (['de', 'fr', 'es', 'ja', 'zh'].includes(lang)) {
+          wikiLang = lang;
+        } else if (reg === 'de') {
+          wikiLang = 'de';
+        } else if (reg === 'fr') {
+          wikiLang = 'fr';
+        } else if (reg === 'jp') {
+          wikiLang = 'ja';
+        }
+        const wikiDomain = `${wikiLang}.wikipedia.org`;
+
+        const wikiRes = await axios.get(`https://${wikiDomain}/w/api.php`, {
           params: {
             action: 'query',
             list: 'search',
@@ -560,14 +691,14 @@ async function fetchLiveMetasearch(
         const searchItems = wikiRes.data?.query?.search || [];
         const seenUrls = new Set(results.map((r) => r.url));
         searchItems.forEach((item: any, idx: number) => {
-          const itemUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/\s+/g, '_'))}`;
+          const itemUrl = `https://${wikiDomain}/wiki/${encodeURIComponent(item.title.replace(/\s+/g, '_'))}`;
           if (!seenUrls.has(itemUrl)) {
             seenUrls.add(itemUrl);
             results.push({
               id: `wiki-${page}-${idx}-${item.pageid}`,
               title: item.title,
               url: itemUrl,
-              domain: 'en.wikipedia.org',
+              domain: wikiDomain,
               snippet: sanitizeSnippet(item.snippet),
               engine: 'wikipedia',
               engines: ['wikipedia', 'duckduckgo'],
@@ -584,8 +715,22 @@ async function fetchLiveMetasearch(
     // C. Top Breaking News on Page 1 (if relevant and under 8 results)
     if (page === 1 && results.length < 8) {
       try {
+        const reg = (params.region || 'auto').toLowerCase();
+        const lang = (params.language || 'auto').toLowerCase();
+        let gl = 'US';
+        let hl = 'en-US';
+        let ceid = 'US:en';
+
+        if (reg === 'gb') { gl = 'GB'; hl = 'en-GB'; ceid = 'GB:en'; }
+        else if (reg === 'de' || lang === 'de') { gl = 'DE'; hl = 'de'; ceid = 'DE:de'; }
+        else if (reg === 'fr' || lang === 'fr') { gl = 'FR'; hl = 'fr'; ceid = 'FR:fr'; }
+        else if (reg === 'in') { gl = 'IN'; hl = 'en-IN'; ceid = 'IN:en'; }
+        else if (reg === 'jp' || lang === 'ja') { gl = 'JP'; hl = 'ja'; ceid = 'JP:ja'; }
+        else if (lang === 'es') { gl = 'ES'; hl = 'es'; ceid = 'ES:es'; }
+        else if (lang === 'zh') { gl = 'TW'; hl = 'zh-TW'; ceid = 'TW:zh-Hant'; }
+
         const newsRes = await axios.get('https://news.google.com/rss/search', {
-          params: { q: query, hl: 'en-US', gl: 'US', ceid: 'US:en' },
+          params: { q: query, hl, gl, ceid },
           headers: { 'User-Agent': 'Mozilla/5.0' },
           timeout: 2500,
         });
@@ -620,6 +765,8 @@ async function fetchLiveMetasearch(
     }
   }
 
+  augmentZenvoraResults(query, category, page, results, infoboxes);
+
   const duration = Number(((Date.now() - startTime) / 1000).toFixed(3));
 
   return {
@@ -652,8 +799,9 @@ export class SearxngService {
     const page = Math.max(1, params.page || 1);
     const safesearch = params.safesearch !== undefined ? params.safesearch : 1;
     const language = params.language || 'auto';
+    const region = params.region || 'auto';
 
-    const cacheKey = `${query.toLowerCase()}:${category}:${page}:${safesearch}:${language}`;
+    const cacheKey = `${query.toLowerCase()}:${category}:${page}:${safesearch}:${language}:${region}`;
 
     // 1. Check in-memory cache
     const cachedItem = queryCache.get(cacheKey);
@@ -668,6 +816,11 @@ export class SearxngService {
     // 2. Query upstream SearXNG JSON endpoint
     try {
       const searxngUrl = `${config.searxngUrl}/search`;
+      let searxLanguage = language === 'auto' ? '' : language;
+      if (region !== 'auto') {
+        searxLanguage = searxLanguage ? `${searxLanguage}-${region.toUpperCase()}` : `all-${region.toUpperCase()}`;
+      }
+
       const response = await axios.get(searxngUrl, {
         params: {
           q: query,
@@ -675,7 +828,7 @@ export class SearxngService {
           categories: category,
           pageno: page,
           safesearch: safesearch,
-          language: language === 'auto' ? '' : language,
+          language: searxLanguage,
           time_range: params.timeRange || '',
         },
         timeout: 1800,
@@ -732,6 +885,8 @@ export class SearxngService {
         const unresponsiveEngines = Array.isArray(rawData.unresponsive_engines)
           ? rawData.unresponsive_engines.map((e: any) => (Array.isArray(e) ? e[0] : String(e)))
           : [];
+
+        augmentZenvoraResults(query, category, page, normalizedResults, infoboxes);
 
         const result: ZenvoraSearchResponse = {
           query,
