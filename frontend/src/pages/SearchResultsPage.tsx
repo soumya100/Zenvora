@@ -5,6 +5,7 @@ import { ImageGrid } from '../components/ImageGrid';
 import { VideoGrid } from '../components/VideoGrid';
 import { NewsList } from '../components/NewsList';
 import { InstantAnswer } from '../components/InstantAnswer';
+import { VisualHighlights } from '../components/VisualHighlights';
 import { Pagination } from '../components/Pagination';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { EmptyState } from '../components/EmptyState';
@@ -101,6 +102,14 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
         <div className="max-w-4xl">
           {response?.infoboxes && response.infoboxes.length > 0 && category === 'general' && (
             <InstantAnswer infobox={response.infoboxes[0]} />
+          )}
+
+          {response?.imageHighlights && response.imageHighlights.length > 0 && category === 'general' && (
+            <VisualHighlights
+              items={response.imageHighlights}
+              subject={response.queryIntent?.subject || query}
+              onViewAllImages={() => onCategoryChange('images')}
+            />
           )}
 
           {category === 'images' ? (

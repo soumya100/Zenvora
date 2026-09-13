@@ -40,6 +40,17 @@ export interface SearchInfobox {
   attributes?: SearchInfoboxAttribute[];
 }
 
+export interface QueryIntent {
+  primaryIntent: SearchCategory | 'navigational';
+  subject: string;
+  contentType?: string;
+  qualityModifiers: string[];
+  styleModifiers: string[];
+  targetDevice?: string;
+  isQuestion: boolean;
+  rawQuery: string;
+}
+
 export interface SearchResponse {
   query: string;
   category: SearchCategory;
@@ -53,6 +64,8 @@ export interface SearchResponse {
   searchDuration: number;
   cached: boolean;
   mock?: boolean;
+  queryIntent?: QueryIntent;
+  imageHighlights?: SearchResultItem[];
 }
 
 export type ThemePreference = 'dark' | 'light' | 'system';

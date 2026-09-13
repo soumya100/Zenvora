@@ -111,6 +111,42 @@ describe('Search API Endpoints', () => {
       expect(topResult.domain).toBe('openai.com');
       expect(topResult.url).toContain('openai.com');
     }, 15000);
+
+    it('correctly understands query intent and modifiers for "Daredevil wallpapers 4K"', async () => {
+      const res = await request(app).get('/api/search?q=Daredevil+wallpapers+4K');
+      expect(res.status).toBe(200);
+      expect(res.body.queryIntent).toBeDefined();
+      expect(res.body.queryIntent.primaryIntent).toBe('images');
+      expect(res.body.queryIntent.contentType).toBe('wallpapers');
+      expect(res.body.queryIntent.qualityModifiers).toContain('4k');
+      expect(res.body.queryIntent.subject.toLowerCase()).toContain('daredevil');
+
+      // Top results must prioritize wallpaper aggregator domains over plain Wikipedia/TV bios
+      const topDomains = res.body.results.slice(0, 5).map((r: any) => r.domain.toLowerCase());
+      const hasWallpaperSource = topDomains.some((d: string) =>
+        d.includes('wallpaper') || d.includes('hdqwalls') || d.includes('artstation')
+      );
+      expect(hasWallpaperSource).toBe(true);
+
+      // Must include visual image highlights strip
+      expect(Array.isArray(res.body.imageHighlights)).toBe(true);
+      expect(res.body.imageHighlights.length).toBeGreaterThan(0);
+      expect(res.body.imageHighlights[0].imgSrc).toBeDefined();
+      expect(res.body.imageHighlights[0].imgSrc.startsWith('http')).toBe(true);
+    }, 20000);
+
+    it('returns high-resolution images in images category for visual queries', async () => {
+      const res = await request(app).get('/api/search?q=Daredevil+wallpapers+4K&category=images');
+      expect(res.status).toBe(200);
+      expect(res.body.category).toBe('images');
+      expect(res.body.results.length).toBeGreaterThan(5);
+
+      const firstImage = res.body.results[0];
+      expect(firstImage.imgSrc).toBeDefined();
+      expect(firstImage.imgSrc.startsWith('http')).toBe(true);
+      expect(firstImage.thumbnail).toBeDefined();
+      expect(firstImage.engine).toBe('bing');
+    }, 20000);
   });
 
   describe('GET /api/suggestions', () => {

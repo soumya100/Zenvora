@@ -50,6 +50,8 @@ export interface ZenvoraInfobox {
   attributes?: ZenvoraInfoboxAttribute[];
 }
 
+import { QueryIntent } from '../services/queryUnderstanding.service';
+
 export interface ZenvoraSearchResponse {
   query: string;
   category: ZenvoraCategory;
@@ -63,4 +65,9 @@ export interface ZenvoraSearchResponse {
   searchDuration: number;
   cached: boolean;
   mock?: boolean;
+  queryIntent?: QueryIntent;
+  imageHighlights?: ZenvoraResultItem[];
 }
+
+export { QueryIntent };
+

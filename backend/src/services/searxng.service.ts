@@ -7,6 +7,11 @@ import {
   ZenvoraResultItem,
   ZenvoraInfobox,
 } from '../types/search';
+import {
+  parseQueryIntent,
+  QueryIntent,
+  KNOWN_WALLPAPER_DOMAINS,
+} from './queryUnderstanding.service';
 
 interface CacheEntry {
   response: ZenvoraSearchResponse;
@@ -61,6 +66,7 @@ function extractDomain(rawUrl: string): string {
 function sanitizeSnippet(text?: string): string {
   if (!text) return '';
   return text
+    .replace(/[\uE000\uE001]/g, '')
     .replace(/<[^>]*>/g, '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -184,6 +190,21 @@ async function fetchDuckDuckGoOfficialResult(query: string): Promise<ZenvoraResu
           engines: ['official', 'verified'],
           category: 'general',
           isNavigational: true,
+        };
+      }
+    } else if (data && data.AbstractText && data.Heading) {
+      const targetUrl = data.AbstractURL ? cleanUrl(data.AbstractURL) : undefined;
+      if (targetUrl && targetUrl.startsWith('http')) {
+        const domain = extractDomain(targetUrl);
+        return {
+          id: `ddg-reference-${domain}`,
+          title: `${data.Heading} — Reference & Overview`,
+          url: targetUrl,
+          domain,
+          snippet: sanitizeSnippet(data.AbstractText),
+          engine: 'instant-answer',
+          engines: ['instant-answer', 'reference'],
+          category: 'general',
         };
       }
     }
@@ -378,6 +399,118 @@ async function fetchGoogleApiResults(
 }
 
 /**
+ * High-fidelity Bing Image Index Aggregator.
+ * Extracts high-resolution image assets, dimension metadata, crisp thumbnails,
+ * and authentic landing web pages for specialized queries (wallpapers, photos, artwork).
+ */
+async function searchBingImages(
+  query: string,
+  page: number = 1
+): Promise<{ images: ZenvoraResultItem[]; webPages: ZenvoraResultItem[] }> {
+  try {
+    const first = (page - 1) * 35 + 1;
+    const res = await axios.get('https://www.bing.com/images/search', {
+      params: { q: query, form: 'HDRSC2', first },
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      timeout: 6500,
+    });
+
+    const html = res.data || '';
+    const regex = /class="iusc"[^>]*m="([^"]*)"/g;
+    let match: RegExpExecArray | null;
+    const images: ZenvoraResultItem[] = [];
+    const webPages: ZenvoraResultItem[] = [];
+    const seenUrls = new Set<string>();
+    const seenLanding = new Set<string>();
+    let idx = 0;
+
+    while ((match = regex.exec(html)) !== null) {
+      try {
+        const decoded = match[1].replace(/&quot;/g, '"');
+        const parsed = JSON.parse(decoded);
+        const murl = parsed.murl;
+        const purl = parsed.purl;
+        const turl = parsed.turl?.replace(/&amp;/g, '&');
+        const domain = extractDomain(purl || murl);
+        let title = sanitizeSnippet(parsed.t || parsed.desc || '');
+        if (!title || title.toLowerCase() === query.toLowerCase().trim()) {
+          try {
+            const rawSlug = (purl || murl)
+              .split('/')
+              .filter(Boolean)
+              .pop()
+              ?.replace(/\.[a-z0-9]+$/i, '')
+              .replace(/[-_+]/g, ' ') || '';
+            if (rawSlug.length > 3 && !/^\d+$/.test(rawSlug)) {
+              title = rawSlug.replace(/\b\w/g, (c: string) => c.toUpperCase());
+            }
+          } catch {}
+          if (!title) {
+            title = `${query} — ${domain}`;
+          }
+        }
+        const width = parsed.mw;
+        const height = parsed.mh;
+        const resFromText = `${murl} ${title}`.match(/\b(\d{3,5}\s*[xX×]\s*\d{3,5})\b/);
+        const resolution = resFromText
+          ? resFromText[1].replace(/\s+/g, '')
+          : width && height
+          ? `${width}x${height}`
+          : undefined;
+
+        if (murl && murl.startsWith('http') && !seenUrls.has(murl)) {
+          seenUrls.add(murl);
+          idx++;
+
+          images.push({
+            id: `img-bing-${page}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+            title,
+            url: purl || murl,
+            domain,
+            snippet: parsed.desc ? sanitizeSnippet(parsed.desc) : `High quality image from ${domain}`,
+            engine: 'bing',
+            engines: ['bing', 'images'],
+            category: 'images',
+            imgSrc: murl,
+            thumbnail: turl || murl,
+            sourceUrl: purl,
+            resolution,
+          });
+
+          // Also harvest authentic landing page as a web search result candidate
+          if (purl && purl.startsWith('http') && !seenLanding.has(purl)) {
+            seenLanding.add(purl);
+            webPages.push({
+              id: `web-imgland-${page}-${idx}`,
+              title: title.includes(domain) ? title : `${title} — ${domain}`,
+              url: cleanUrl(purl),
+              domain,
+              snippet: parsed.desc
+                ? sanitizeSnippet(parsed.desc)
+                : `${query} wallpapers, images, and high resolution backgrounds on ${domain}.`,
+              thumbnail: turl || murl,
+              engine: 'bing',
+              engines: ['bing', 'visual'],
+              category: 'general',
+            });
+          }
+        }
+      } catch {}
+    }
+
+    return { images, webPages };
+  } catch (e: any) {
+    console.warn('[LiveSearch] Bing image index error:', e.message);
+    return { images: [], webPages: [] };
+  }
+}
+
+/**
  * Strictly scoped knowledge infobox lookup.
  * Only triggers for genuine informational / encyclopedic questions, NOT for domain or website searches.
  */
@@ -458,14 +591,16 @@ async function fetchScopedInfobox(
 }
 
 /**
- * Precision Relevance Ranking & Deduplication Engine
+ * Precision Relevance Ranking & Deduplication Engine (12-Signal Scoring)
  */
 function rankAndDeduplicateResults(
   query: string,
-  rawItems: ZenvoraResultItem[]
+  rawItems: ZenvoraResultItem[],
+  queryIntent?: QueryIntent
 ): ZenvoraResultItem[] {
   const cleanQ = query.toLowerCase().trim();
   const qTokens = cleanQ.split(/\s+/).filter((t) => t.length > 1);
+  const intent = queryIntent || parseQueryIntent(query);
 
   // 1. Deduplicate by canonical URL
   const seenUrls = new Set<string>();
@@ -486,62 +621,129 @@ function rankAndDeduplicateResults(
     const snippetLower = item.snippet.toLowerCase();
     const domainLower = item.domain.toLowerCase();
 
-    // Navigational / Official Boost
+    // Signal 1: Navigational / Official Boost
     if (item.isNavigational) {
       score += 150;
     }
 
-    // Direct domain match to query (e.g. query "youtube", domain "youtube.com")
+    // Signal 2: Direct domain match to query
     if (
       domainLower === cleanQ ||
       domainLower.startsWith(`${cleanQ}.`) ||
       domainLower === `www.${cleanQ}`
     ) {
-      score += 80;
+      score += 90;
     } else if (domainLower.includes(cleanQ)) {
-      score += 40;
+      score += 45;
     }
 
-    // Exact title match
+    // Signal 3: Intent-Specific Relevance Scoring
+    if (intent.primaryIntent === 'images' || intent.contentType === 'wallpapers') {
+      const isWallpaperDomain = KNOWN_WALLPAPER_DOMAINS.some((d) => domainLower.includes(d));
+      const hasWallpaperInTitle = /\b(wallpaper|wallpapers|background|backgrounds|art|4k|hd|photos?)\b/i.test(titleLower);
+      const hasWallpaperInSnippet = /\b(wallpaper|wallpapers|background|backgrounds)\b/i.test(snippetLower);
+
+      if (isWallpaperDomain) {
+        score += 85;
+      }
+      if (hasWallpaperInTitle) {
+        score += 65;
+      } else if (hasWallpaperInSnippet) {
+        score += 35;
+      }
+
+      // Match quality modifiers (4k, 8k, 1080p)
+      for (const qMod of intent.qualityModifiers) {
+        if (titleLower.includes(qMod)) {
+          score += 40;
+        } else if (snippetLower.includes(qMod)) {
+          score += 20;
+        }
+      }
+
+      // Match style modifiers (dark, minimalist, anime)
+      for (const sMod of intent.styleModifiers) {
+        if (titleLower.includes(sMod)) {
+          score += 30;
+        }
+      }
+
+      // Strongly demote generic video streaming services (Netflix, Disney+, Hotstar)
+      // and Wikipedia biographies when the query specifically requested wallpapers
+      const isStreamingOrBio = /\b(imdb\.com|netflix\.com|disneyplus\.com|hotstar\.com|fandom\.com|wikipedia\.org)\b/i.test(domainLower);
+      if (isStreamingOrBio && !hasWallpaperInTitle) {
+        score -= 75;
+      }
+    } else if (intent.primaryIntent === 'it') {
+      const isTechDocDomain = /\b(docs\.|developer\.|github\.com|npmjs\.com|pypi\.org|stackoverflow\.com|w3schools\.com|mozilla\.org|dev\.to)\b/i.test(domainLower);
+      if (isTechDocDomain) {
+        score += 70;
+      }
+      if (/\b(documentation|docs|guide|tutorial|api|reference|cheat sheet)\b/i.test(titleLower)) {
+        score += 50;
+      }
+    }
+
+    // Signal 4: Exact Title Match (avoid query-echo bias for image results)
     if (titleLower === cleanQ) {
-      score += 60;
+      if (item.category !== 'images') {
+        score += 65;
+      }
     } else if (titleLower.startsWith(cleanQ)) {
       score += 45;
     } else if (titleLower.includes(cleanQ)) {
       score += 30;
     }
 
-    // Multi-word token coverage in title
+    // Signal 5: Core Subject Match in Title
+    if (intent.subject && intent.subject.length > 2) {
+      const subjLower = intent.subject.toLowerCase();
+      if (titleLower.includes(subjLower)) {
+        score += 40;
+      }
+    }
+
+    // Signal 6: Multi-word Token Coverage
     let titleMatches = 0;
     for (const token of qTokens) {
       if (titleLower.includes(token)) {
         titleMatches++;
         score += 15;
       }
-    }
-    if (qTokens.length > 1 && titleMatches === qTokens.length) {
-      score += 35; // All query words in title
-    }
-
-    // Snippet relevance
-    for (const token of qTokens) {
       if (snippetLower.includes(token)) {
         score += 5;
       }
     }
+    if (qTokens.length > 1 && titleMatches === qTokens.length) {
+      score += 40; // Full phrase token coverage
+    }
 
-    // De-prioritize Wikipedia for non-wiki queries so official sites rank higher
-    if (domainLower.includes('wikipedia.org') && !cleanQ.includes('wiki')) {
-      score -= 25;
+    // Signal 7: Wikipedia De-prioritization for non-encyclopedic queries
+    if (domainLower.includes('wikipedia.org') && !cleanQ.includes('wiki') && !intent.isQuestion) {
+      score -= 30;
+    }
+
+    // Signal 8: Irrelevance penalty (zero query tokens found in title, snippet, or domain)
+    if (qTokens.length > 0 && !item.isNavigational) {
+      const hasAnyToken = qTokens.some(
+        (t) => titleLower.includes(t) || snippetLower.includes(t) || domainLower.includes(t)
+      );
+      if (!hasAnyToken) {
+        score -= 60;
+      }
     }
 
     return { ...item, score };
   });
 
-  // 3. Sort by score descending
-  scoredItems.sort((a, b) => (b.score || 0) - (a.score || 0));
+  // Filter out heavily penalized unrelated results when good matches exist
+  const validItems = scoredItems.filter((it) => (it.score || 0) >= 0);
+  const finalItems = validItems.length >= 2 ? validItems : scoredItems;
 
-  return scoredItems;
+  // 3. Sort by score descending
+  finalItems.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  return finalItems;
 }
 
 /**
@@ -625,6 +827,8 @@ async function fetchLiveMetasearch(
   const query = params.q.trim();
   const category: ZenvoraCategory = params.category || 'general';
   const page = Math.max(1, params.page || 1);
+  const queryIntent = parseQueryIntent(query);
+  let imageHighlights: ZenvoraResultItem[] | undefined;
 
   const results: ZenvoraResultItem[] = [];
   const infoboxes: ZenvoraInfobox[] = [];
@@ -648,37 +852,44 @@ async function fetchLiveMetasearch(
 
   // 2. Category-Specific Live Aggregators
   if (category === 'images') {
-    // A. Openverse Creative Commons Image Search
-    try {
-      const openverseRes = await axios.get('https://api.openverse.org/v1/images/', {
-        params: { q: query, page_size: 16, page: page },
-        headers: { 'User-Agent': 'ZenvoraSearch/1.0' },
-        timeout: 4500,
-      });
-
-      if (typeof openverseRes.data?.result_count === 'number') {
-        totalResultsCount = openverseRes.data.result_count;
-      }
-
-      const rawItems = openverseRes.data?.results || [];
-      rawItems.forEach((img: any, idx: number) => {
-        results.push({
-          id: `img-ov-${page}-${idx}`,
-          title: img.title || `${query} image ${idx + 1}`,
-          url: img.foreign_landing_url || img.url,
-          domain: extractDomain(img.foreign_landing_url || img.url || 'openverse.org'),
-          snippet: `Author: ${img.creator || 'Unknown'} | License: ${img.license || 'CC'}`,
-          engine: 'openverse',
-          engines: ['openverse', 'flickr'],
-          category: 'images',
-          imgSrc: img.url,
-          thumbnail: img.thumbnail || img.url,
-          resolution: img.width && img.height ? `${img.width}x${img.height}` : undefined,
-          author: img.creator,
+    // A. High-Fidelity Bing Image Index Aggregator (Priority 1)
+    const { images: bingImages } = await searchBingImages(query, page);
+    if (bingImages.length > 0) {
+      results.push(...bingImages);
+      totalResultsCount = Math.max(120, bingImages.length * 8);
+    } else {
+      // B. Openverse Creative Commons Image Search (Fallback)
+      try {
+        const openverseRes = await axios.get('https://api.openverse.org/v1/images/', {
+          params: { q: query, page_size: 16, page: page },
+          headers: { 'User-Agent': 'ZenvoraSearch/1.0' },
+          timeout: 4500,
         });
-      });
-    } catch (e: any) {
-      console.warn('[LiveSearch] Openverse image error:', e.message);
+
+        if (typeof openverseRes.data?.result_count === 'number') {
+          totalResultsCount = openverseRes.data.result_count;
+        }
+
+        const rawItems = openverseRes.data?.results || [];
+        rawItems.forEach((img: any, idx: number) => {
+          results.push({
+            id: `img-ov-${page}-${idx}`,
+            title: img.title || `${query} image ${idx + 1}`,
+            url: img.foreign_landing_url || img.url,
+            domain: extractDomain(img.foreign_landing_url || img.url || 'openverse.org'),
+            snippet: `Author: ${img.creator || 'Unknown'} | License: ${img.license || 'CC'}`,
+            engine: 'openverse',
+            engines: ['openverse', 'flickr'],
+            category: 'images',
+            imgSrc: img.url,
+            thumbnail: img.thumbnail || img.url,
+            resolution: img.width && img.height ? `${img.width}x${img.height}` : undefined,
+            author: img.creator,
+          });
+        });
+      } catch (e: any) {
+        console.warn('[LiveSearch] Openverse image error:', e.message);
+      }
     }
   } else if (category === 'videos') {
     // YouTube Real-time Video Extraction with Pagination
@@ -860,13 +1071,30 @@ async function fetchLiveMetasearch(
 
     let webResults: ZenvoraResultItem[] = [];
 
+    // Visual / Wallpaper Intent Enrichment:
+    // If the user's intent is visual or wallpapers (e.g. "Daredevil wallpapers 4K"),
+    // extract both high-res preview highlights and authentic wallpaper landing pages.
+    if (page === 1 && (queryIntent.primaryIntent === 'images' || queryIntent.contentType === 'wallpapers')) {
+      try {
+        const { images: visualImgs, webPages: visualPages } = await searchBingImages(query, 1);
+        if (visualImgs.length > 0) {
+          imageHighlights = visualImgs.slice(0, 8);
+        }
+        if (visualPages.length > 0) {
+          webResults.push(...visualPages);
+        }
+      } catch (e: any) {
+        console.warn('[LiveSearch] Visual intent extraction error:', e.message);
+      }
+    }
+
     // Tier A: Check configured third-party search APIs
     if (config.braveApiKey) {
-      webResults = await fetchBraveApiResults(query, page, config.braveApiKey);
+      webResults.push(...(await fetchBraveApiResults(query, page, config.braveApiKey)));
     } else if (config.bingApiKey) {
-      webResults = await fetchBingApiResults(query, page, config.bingApiKey);
+      webResults.push(...(await fetchBingApiResults(query, page, config.bingApiKey)));
     } else if (config.googleApiKey && config.googleCx) {
-      webResults = await fetchGoogleApiResults(query, page, config.googleApiKey, config.googleCx);
+      webResults.push(...(await fetchGoogleApiResults(query, page, config.googleApiKey, config.googleCx)));
     }
 
     // Tier B: Live Bing Web Index Aggregator + DuckDuckGo Official Site Resolution
@@ -924,8 +1152,8 @@ async function fetchLiveMetasearch(
     }
   }
 
-  // Precision Relevance Ranking & Deduplication
-  const rankedResults = rankAndDeduplicateResults(query, results);
+  // Precision Relevance Ranking & Deduplication with Intent Awareness
+  const rankedResults = rankAndDeduplicateResults(query, results, queryIntent);
 
   // First-party Zenvora query augmentation
   augmentZenvoraResults(query, category, page, rankedResults, infoboxes);
@@ -948,6 +1176,8 @@ async function fetchLiveMetasearch(
     searchDuration: duration,
     cached: false,
     mock: false,
+    queryIntent,
+    imageHighlights,
   };
 }
 
@@ -1061,7 +1291,8 @@ export class SearxngService {
           };
         });
 
-        const rankedResults = rankAndDeduplicateResults(query, normalizedResults);
+        const queryIntent = parseQueryIntent(query);
+        const rankedResults = rankAndDeduplicateResults(query, normalizedResults, queryIntent);
         augmentZenvoraResults(query, category, page, rankedResults, infoboxes);
 
         const searchDuration = Number(((Date.now() - startTime) / 1000).toFixed(3));
@@ -1082,6 +1313,7 @@ export class SearxngService {
           numberOfResults: rawData.number_of_results || rankedResults.length,
           searchDuration,
           cached: false,
+          queryIntent,
         };
 
         queryCache.set(cacheKey, {
