@@ -24,11 +24,11 @@ export const VideoGrid: React.FC<VideoGridProps> = ({ items }) => {
         >
           <div className="relative aspect-video w-full overflow-hidden bg-slate-900">
             <img
-              src={
-                item.thumbnail ||
-                item.imgSrc ||
-                'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80'
-              }
+              src={(() => {
+                const raw = item.thumbnail || item.imgSrc;
+                if (!raw) return 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80';
+                return raw.startsWith('/i/') ? `https://duckduckgo.com${raw}` : raw;
+              })()}
               alt={item.title}
               loading="lazy"
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 opacity-90 group-hover:opacity-100"

@@ -87,7 +87,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ item, query }) => {
       {item.thumbnail && (
         <div className="mt-3 flex items-center">
           <img
-            src={item.thumbnail}
+            src={item.thumbnail.startsWith('/i/') ? `https://duckduckgo.com${item.thumbnail}` : item.thumbnail}
             alt=""
             loading="lazy"
             className="h-16 w-24 object-cover rounded-lg border border-slate-200 dark:border-zen-bg-darkBorder"

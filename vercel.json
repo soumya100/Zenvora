@@ -25,6 +25,13 @@
       }
     },
     {
+      "source": "/i/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "backend"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": {
         "type": "service",

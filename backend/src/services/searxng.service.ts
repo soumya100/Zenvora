@@ -404,12 +404,17 @@ async function fetchScopedInfobox(
     });
 
     if (ddgRes.data && ddgRes.data.AbstractText && ddgRes.data.Heading) {
+      let imgSrc = ddgRes.data.Image ? String(ddgRes.data.Image) : undefined;
+      if (imgSrc && !imgSrc.startsWith('http')) {
+        imgSrc = `https://duckduckgo.com${imgSrc}`;
+      }
+
       return {
         title: ddgRes.data.Heading,
         content: sanitizeSnippet(ddgRes.data.AbstractText),
         url: ddgRes.data.AbstractURL ? cleanUrl(ddgRes.data.AbstractURL) : undefined,
         source: ddgRes.data.AbstractSource || 'Instant Answer',
-        imgSrc: ddgRes.data.Image || undefined,
+        imgSrc,
       };
     }
   } catch {}
@@ -1014,8 +1019,16 @@ export class SearxngService {
             engines: Array.isArray(item.engines) ? item.engines : [item.engine || 'metasearch'],
             category: item.category || category,
             score: item.score,
-            thumbnail: item.thumbnail_src || item.thumbnail,
-            imgSrc: item.img_src || item.image_url,
+            thumbnail: item.thumbnail_src?.startsWith('/i/')
+              ? `https://duckduckgo.com${item.thumbnail_src}`
+              : item.thumbnail_src?.startsWith('/')
+              ? `${config.searxngUrl}${item.thumbnail_src}`
+              : item.thumbnail_src || item.thumbnail,
+            imgSrc: item.img_src?.startsWith('/i/')
+              ? `https://duckduckgo.com${item.img_src}`
+              : item.img_src?.startsWith('/')
+              ? `${config.searxngUrl}${item.img_src}`
+              : item.img_src || item.image_url,
             sourceUrl: item.source_url,
             publishedDate: item.publishedDate || item.pubdate,
             author: item.author,
@@ -1025,19 +1038,28 @@ export class SearxngService {
         });
 
         const rawInfoboxes = Array.isArray(rawData.infoboxes) ? rawData.infoboxes : [];
-        const infoboxes: ZenvoraInfobox[] = rawInfoboxes.map((box: any) => ({
-          title: box.infobox || box.title || '',
-          content: box.content ? sanitizeSnippet(box.content) : '',
-          url: box.url ? cleanUrl(box.url) : undefined,
-          imgSrc: box.img_src,
-          source: box.engine || 'Upstream',
-          attributes: Array.isArray(box.attributes)
-            ? box.attributes.map((attr: any) => ({
-                label: String(attr.label || ''),
-                value: String(attr.value || ''),
-              }))
-            : undefined,
-        }));
+        const infoboxes: ZenvoraInfobox[] = rawInfoboxes.map((box: any) => {
+          let boxImg = box.img_src ? String(box.img_src) : undefined;
+          if (boxImg && boxImg.startsWith('/i/')) {
+            boxImg = `https://duckduckgo.com${boxImg}`;
+          } else if (boxImg && boxImg.startsWith('/')) {
+            boxImg = `${config.searxngUrl}${boxImg}`;
+          }
+
+          return {
+            title: box.infobox || box.title || '',
+            content: box.content ? sanitizeSnippet(box.content) : '',
+            url: box.url ? cleanUrl(box.url) : undefined,
+            imgSrc: boxImg,
+            source: box.engine || 'Upstream',
+            attributes: Array.isArray(box.attributes)
+              ? box.attributes.map((attr: any) => ({
+                  label: String(attr.label || ''),
+                  value: String(attr.value || ''),
+                }))
+              : undefined,
+          };
+        });
 
         const rankedResults = rankAndDeduplicateResults(query, normalizedResults);
         augmentZenvoraResults(query, category, page, rankedResults, infoboxes);

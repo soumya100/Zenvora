@@ -18,7 +18,8 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
         {items.map((item) => {
-          const imageSrc = item.imgSrc || item.thumbnail || item.url;
+          const rawSrc = item.imgSrc || item.thumbnail || item.url;
+          const imageSrc = rawSrc?.startsWith('/i/') ? `https://duckduckgo.com${rawSrc}` : rawSrc;
           return (
             <div
               key={item.id}
@@ -79,7 +80,10 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
 
             <div className="p-3 sm:p-4 flex items-center justify-center flex-1 min-h-0 bg-slate-950/20 dark:bg-black/40 overflow-hidden">
               <img
-                src={selectedImage.imgSrc || selectedImage.thumbnail || selectedImage.url}
+                src={(() => {
+                  const modalRaw = selectedImage.imgSrc || selectedImage.thumbnail || selectedImage.url;
+                  return modalRaw?.startsWith('/i/') ? `https://duckduckgo.com${modalRaw}` : modalRaw;
+                })()}
                 alt={selectedImage.title}
                 className="max-h-[55vh] sm:max-h-[60vh] max-w-full object-contain rounded-lg shadow-md"
               />

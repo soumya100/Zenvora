@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SearchInfobox } from '../types';
 import { BookOpen, ExternalLink, Sparkles } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
@@ -9,6 +9,7 @@ interface InstantAnswerProps {
 
 export const InstantAnswer: React.FC<InstantAnswerProps> = ({ infobox }) => {
   const { settings } = useSettings();
+  const [imageFailed, setImageFailed] = useState(false);
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
   const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
 
@@ -64,13 +65,17 @@ export const InstantAnswer: React.FC<InstantAnswerProps> = ({ infobox }) => {
           )}
         </div>
 
-        {infobox.imgSrc && (
+        {infobox.imgSrc && !imageFailed && (
           <div className="shrink-0 self-center md:self-start">
             <img
-              src={infobox.imgSrc}
+              src={
+                infobox.imgSrc.startsWith('/i/')
+                  ? `https://duckduckgo.com${infobox.imgSrc}`
+                  : infobox.imgSrc
+              }
               alt={infobox.title}
               className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder shadow-sm"
-              onError={(e) => ((e.target as HTMLElement).style.display = 'none')}
+              onError={() => setImageFailed(true)}
             />
           </div>
         )}
