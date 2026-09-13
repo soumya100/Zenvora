@@ -74,6 +74,43 @@ describe('Search API Endpoints', () => {
         expect(res.body.infoboxes[0].title).toContain('Zenvora');
       }
     }, 20000);
+
+    it('returns accurate non-Wikipedia web results for website and tech queries', async () => {
+      const testCases = [
+        { q: 'youtube', expectedDomain: 'youtube.com' },
+        { q: 'github', expectedDomain: 'github.com' },
+        { q: 'react', expectedDomain: 'react.dev' },
+      ];
+
+      for (const tc of testCases) {
+        const res = await request(app).get(`/api/search?q=${encodeURIComponent(tc.q)}`);
+        expect(res.status).toBe(200);
+        expect(res.body.results.length).toBeGreaterThan(0);
+
+        // Top results must not be purely wikipedia
+        const nonWikiResults = res.body.results.filter(
+          (r: any) => !r.domain.includes('wikipedia.org')
+        );
+        expect(nonWikiResults.length).toBeGreaterThan(0);
+
+        // Check that the expected official domain appears in the top results
+        const hasExpectedDomain = res.body.results
+          .slice(0, 5)
+          .some((r: any) => r.domain.includes(tc.expectedDomain));
+        expect(hasExpectedDomain).toBe(true);
+      }
+    }, 25000);
+
+    it('resolves direct navigational intent when query is a domain URL', async () => {
+      const res = await request(app).get('/api/search?q=openai.com');
+      expect(res.status).toBe(200);
+      expect(res.body.results.length).toBeGreaterThan(0);
+
+      const topResult = res.body.results[0];
+      expect(topResult.isNavigational).toBe(true);
+      expect(topResult.domain).toBe('openai.com');
+      expect(topResult.url).toContain('openai.com');
+    }, 15000);
   });
 
   describe('GET /api/suggestions', () => {

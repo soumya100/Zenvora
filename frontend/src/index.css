@@ -50,6 +50,20 @@
   background: rgba(148, 163, 184, 0.45);
 }
 
+/* Hide scrollbars for clean responsive carousels and tab bars */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .bg-mesh-dark {
   background-image: 
     radial-gradient(at 10% 10%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),

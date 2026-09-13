@@ -34,4 +34,30 @@ describe('ResultCard Component', () => {
     const link = screen.getByRole('link', { name: /Linux Hardening Best Practices/i });
     expect(link).toHaveAttribute('href', 'https://security.example.org/linux-guide');
   });
+
+  it('renders official website badge when item is navigational', () => {
+    const navItem: SearchResultItem = {
+      ...mockItem,
+      id: 'test-nav',
+      title: 'YouTube — Official Website',
+      url: 'https://youtube.com/',
+      domain: 'youtube.com',
+      isNavigational: true,
+    };
+    render(<ResultCard item={navItem} />);
+
+    expect(screen.getByText('Official Website')).toBeInTheDocument();
+  });
+
+  it('sanitizes dangerous non-http URLs', () => {
+    const unsafeItem: SearchResultItem = {
+      ...mockItem,
+      id: 'test-unsafe',
+      url: 'javascript:alert(1)',
+    };
+    render(<ResultCard item={unsafeItem} />);
+
+    const link = screen.getByRole('link', { name: /Linux Hardening Best Practices/i });
+    expect(link).toHaveAttribute('href', '#');
+  });
 });

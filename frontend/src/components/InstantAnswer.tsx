@@ -31,7 +31,16 @@ export const InstantAnswer: React.FC<InstantAnswerProps> = ({ infobox }) => {
                 className="text-xs text-slate-400 hover:text-cyan-500 inline-flex items-center gap-1 font-normal font-sans"
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                Wikipedia
+                <span>
+                  {infobox.source ||
+                    (() => {
+                      try {
+                        return new URL(infobox.url).hostname.replace(/^www\./, '');
+                      } catch {
+                        return 'Source';
+                      }
+                    })()}
+                </span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             )}

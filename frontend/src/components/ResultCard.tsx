@@ -24,15 +24,27 @@ export const ResultCard: React.FC<ResultCardProps> = ({ item, query }) => {
   const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
 
   const engineLabel = item.engines && item.engines.length > 0 ? item.engines.join(', ') : item.engine;
+  const isSafeUrl = item.url && (item.url.startsWith('https://') || item.url.startsWith('http://'));
+  const safeHref = isSafeUrl ? item.url : '#';
 
   return (
-    <article className="group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 bg-white/70 dark:bg-zen-bg-darkSurface/60 hover:bg-white dark:hover:bg-zen-bg-darkSurface border border-slate-200/80 dark:border-zen-bg-darkBorder/60 hover:border-cyan-500/30 dark:hover:border-cyan-500/30 hover:shadow-lg dark:hover:shadow-glow-cyan/5">
+    <article className={`group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 ${
+      item.isNavigational
+        ? 'bg-emerald-500/[0.03] dark:bg-emerald-950/20 border-emerald-500/40 dark:border-emerald-500/40 shadow-sm'
+        : 'bg-white/70 dark:bg-zen-bg-darkSurface/60 hover:bg-white dark:hover:bg-zen-bg-darkSurface border border-slate-200/80 dark:border-zen-bg-darkBorder/60 hover:border-cyan-500/30 dark:hover:border-cyan-500/30'
+    } hover:shadow-lg dark:hover:shadow-glow-cyan/5`}>
       <div className="flex items-center justify-between gap-2 mb-2 text-xs">
         <div className="flex items-center gap-2 truncate text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zen-bg-darkCard border border-slate-200 dark:border-zen-bg-darkBorder/80 text-slate-600 dark:text-slate-300 truncate">
             <Lock className="w-3 h-3 text-cyan-500 shrink-0" />
             {item.domain}
           </span>
+          {item.isNavigational && (
+            <span className="inline-flex items-center gap-1 font-semibold text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
+              <Check className="w-3 h-3 text-emerald-500" />
+              Official Website
+            </span>
+          )}
           {item.publishedDate && (
             <span className="shrink-0 text-slate-400 dark:text-slate-500">• {item.publishedDate}</span>
           )}
@@ -58,7 +70,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ item, query }) => {
 
       <h2 className="text-base sm:text-lg font-bold leading-snug mb-2 text-slate-900 dark:text-slate-100">
         <a
-          href={item.url}
+          href={safeHref}
           target={targetAttr}
           rel={relAttr}
           className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-baseline gap-1.5 focus:outline-none focus:underline"

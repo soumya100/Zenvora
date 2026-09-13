@@ -67,53 +67,160 @@ function sanitizeSnippet(text?: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
 /**
- * Live Web Search Provider (Yahoo / Bing global index aggregator)
+ * Decode Bing's tracking/redirect wrapper URL into the direct destination URL.
+ * Bing encodes the original target URL in base64 inside the 'u' parameter (e.g. u=a1<base64>).
  */
-async function fetchYahooWebResults(
+function decodeBingUrl(rawUrl: string): string {
+  try {
+    const unescaped = rawUrl.replace(/&amp;/g, '&');
+    if (!unescaped.includes('/ck/a?')) {
+      return cleanUrl(unescaped);
+    }
+    const parsed = new URL(unescaped);
+    const uParam = parsed.searchParams.get('u');
+    if (!uParam) {
+      return cleanUrl(unescaped);
+    }
+
+    // Format is typically u=a1<base64>
+    const b64 = uParam.replace(/^a1/, '').replace(/[-_]/g, (m) => (m === '-' ? '+' : '/'));
+    const decoded = Buffer.from(b64, 'base64').toString('utf8');
+    if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+      return cleanUrl(decoded);
+    }
+  } catch {
+    // Fallback to original URL
+  }
+  return cleanUrl(rawUrl);
+}
+
+/**
+ * Check if the query explicitly has encyclopedic/wiki intent
+ */
+function isExplicitWikiQuery(query: string): boolean {
+  const q = query.toLowerCase().trim();
+  const wikiPatterns = [
+    /\b(wiki|wikipedia|wikidata)\b/i,
+    /\b(who (is|was|were))\b/i,
+    /\b(biography of|history of|definition of|define|etymology)\b/i,
+  ];
+  return wikiPatterns.some((p) => p.test(q));
+}
+
+/**
+ * Detect domain or direct URL navigational intent
+ */
+function resolveNavigationalIntent(query: string, page: number = 1): ZenvoraResultItem | null {
+  if (page !== 1) return null;
+  const cleanQ = query.trim().toLowerCase();
+
+  // Pattern for valid domain or URL: e.g. youtube.com, github.com, https://openai.com
+  const domainMatch = cleanQ.match(
+    /^(?:https?:\/\/)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*(?:\.[a-z]{2,}))(?::\d+)?(?:\/.*)?$/i
+  );
+
+  if (domainMatch) {
+    const rawHostname = domainMatch[1].replace(/^www\./i, '');
+    // Ensure valid domain structure (at least one dot and standard TLD)
+    if (rawHostname.includes('.')) {
+      const canonicalUrl = cleanQ.startsWith('http://') || cleanQ.startsWith('https://')
+        ? cleanQ
+        : `https://${rawHostname}/`;
+
+      const domain = extractDomain(canonicalUrl);
+      const titleName = domain.split('.')[0];
+      const capitalizedTitle = titleName.charAt(0).toUpperCase() + titleName.slice(1);
+
+      return {
+        id: `nav-direct-${domain}`,
+        title: `${capitalizedTitle} — Official Website (${domain})`,
+        url: cleanUrl(canonicalUrl),
+        domain: domain,
+        snippet: `Direct navigation to official website: ${domain}. Click to open ${domain} safely.`,
+        engine: 'navigation',
+        engines: ['navigation', 'verified'],
+        category: 'general',
+        isNavigational: true,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * DuckDuckGo Instant Answer / Official Site resolution
+ */
+async function fetchDuckDuckGoOfficialResult(query: string): Promise<ZenvoraResultItem | null> {
+  try {
+    const res = await axios.get('https://api.duckduckgo.com/', {
+      params: { q: query.trim(), format: 'json', no_html: 1, skip_disambig: 1 },
+      timeout: 2500,
+    });
+
+    const data = res.data;
+    if (data && Array.isArray(data.Results) && data.Results.length > 0) {
+      const topResult = data.Results[0];
+      if (topResult.FirstURL && topResult.FirstURL.startsWith('http')) {
+        const cleanItemUrl = cleanUrl(topResult.FirstURL);
+        const domain = extractDomain(cleanItemUrl);
+        const title = sanitizeSnippet(topResult.Text || data.Heading || query);
+
+        return {
+          id: `ddg-official-${domain}`,
+          title: title.includes(domain) ? title : `${title} — Official Website`,
+          url: cleanItemUrl,
+          domain: domain,
+          snippet: data.AbstractText
+            ? sanitizeSnippet(data.AbstractText)
+            : `Official website for ${data.Heading || query} (${domain}).`,
+          engine: 'official',
+          engines: ['official', 'verified'],
+          category: 'general',
+          isNavigational: true,
+        };
+      }
+    }
+  } catch {
+    // Non-critical
+  }
+  return null;
+}
+
+/**
+ * Live Bing Web Index Aggregator with automatic tracking-URL decoding
+ */
+async function fetchBingWebResults(
   searchQuery: string,
   page: number = 1,
   language: string = 'auto',
   region: string = 'auto'
 ): Promise<ZenvoraResultItem[]> {
   try {
-    const b = (page - 1) * 7 + 1;
+    const first = (page - 1) * 10 + 1;
     const reg = (region || 'auto').toLowerCase();
     const lang = (language || 'auto').toLowerCase();
 
-    let domain = 'search.yahoo.com';
     let acceptLang = 'en-US,en;q=0.9';
+    if (reg === 'de' || lang === 'de') acceptLang = 'de-DE,de;q=0.9,en;q=0.8';
+    else if (reg === 'fr' || lang === 'fr') acceptLang = 'fr-FR,fr;q=0.9,en;q=0.8';
+    else if (reg === 'es' || lang === 'es') acceptLang = 'es-ES,es;q=0.9,en;q=0.8';
+    else if (reg === 'in') acceptLang = 'en-IN,en;q=0.9,hi;q=0.8';
+    else if (reg === 'gb') acceptLang = 'en-GB,en;q=0.9';
+    else if (reg === 'jp' || lang === 'ja') acceptLang = 'ja-JP,ja;q=0.9,en;q=0.8';
 
-    if (reg === 'de' || lang === 'de') {
-      domain = 'de.search.yahoo.com';
-      acceptLang = 'de-DE,de;q=0.9,en;q=0.8';
-    } else if (reg === 'fr' || lang === 'fr') {
-      domain = 'fr.search.yahoo.com';
-      acceptLang = 'fr-FR,fr;q=0.9,en;q=0.8';
-    } else if (reg === 'es' || lang === 'es') {
-      domain = 'es.search.yahoo.com';
-      acceptLang = 'es-ES,es;q=0.9,en;q=0.8';
-    } else if (reg === 'in') {
-      domain = 'in.search.yahoo.com';
-      acceptLang = 'en-IN,en;q=0.9,hi;q=0.8';
-    } else if (reg === 'gb') {
-      domain = 'uk.search.yahoo.com';
-      acceptLang = 'en-GB,en;q=0.9';
-    } else if (reg === 'jp' || lang === 'ja') {
-      domain = 'search.yahoo.co.jp';
-      acceptLang = 'ja-JP,ja;q=0.9,en;q=0.8';
-    }
-
-    const url = `https://${domain}/search?p=${encodeURIComponent(searchQuery)}&b=${b}`;
-    const res = await axios.get(url, {
+    const res = await axios.get('https://www.bing.com/search', {
+      params: { q: searchQuery, first },
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': acceptLang,
       },
       timeout: 5000,
@@ -121,44 +228,32 @@ async function fetchYahooWebResults(
 
     const html = res.data || '';
     const results: ZenvoraResultItem[] = [];
-    const algoBlocks = html.split(/<div class="[^"]*algo algo-sr[^"]*"/);
+    const blocks = html.split('<li class="b_algo"');
 
-    for (let i = 1; i < algoBlocks.length; i++) {
-      const block = algoBlocks[i];
-      const linkMatch = block.match(/href="([^"]*)"/);
-      const titleMatch = block.match(/<h3[^>]*>([\s\S]*?)<\/h3>/);
-      const snippetMatch = block.match(/<div class="[^"]*compText[^"]*"[^>]*><p[^>]*>([\s\S]*?)<\/p>/);
+    for (let i = 1; i < blocks.length; i++) {
+      const block = blocks[i].split('</li>')[0];
+      const h2Match = block.match(
+        /<h2[^>]*><a\s+(?:[^>]*?\s+)?href="([^"#][^"]*)"[^>]*>([\s\S]*?)<\/a><\/h2>/i
+      );
+      const snippetMatch =
+        block.match(/<p[^>]*class="(?:b_lineclamp\d*|b_algoSlug)"[^>]*>([\s\S]*?)<\/p>/i) ||
+        block.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
 
-      if (linkMatch && titleMatch) {
-        let rawUrl = linkMatch[1];
-        if (rawUrl.includes('/RU=')) {
-          const ruMatch = rawUrl.match(/\/RU=([^/]+)/);
-          if (ruMatch) {
-            rawUrl = decodeURIComponent(ruMatch[1]);
-          }
-        }
+      if (h2Match) {
+        const rawHref = h2Match[1];
+        const finalUrl = decodeBingUrl(rawHref);
+        const title = sanitizeSnippet(h2Match[2]);
+        const snippet = snippetMatch ? sanitizeSnippet(snippetMatch[1]) : '';
 
-        const cleanTitle = titleMatch[1].replace(/<[^>]*>/g, '').trim();
-        const cleanSnippet = snippetMatch
-          ? sanitizeSnippet(
-              snippetMatch[1]
-                .replace(/<[^>]*>/g, '')
-                .replace(/&mdash;/g, '—')
-                .replace(/&middot;/g, '·')
-            )
-          : '';
-
-        if (cleanTitle && rawUrl.startsWith('http')) {
-          const cleanItemUrl = cleanUrl(rawUrl);
-          const domain = extractDomain(cleanItemUrl);
+        if (finalUrl && title && finalUrl.startsWith('http')) {
           results.push({
-            id: `web-y-${page}-${i}-${Math.random().toString(36).substring(2, 7)}`,
-            title: cleanTitle,
-            url: cleanItemUrl,
-            domain: domain,
-            snippet: cleanSnippet,
-            engine: 'yahoo',
-            engines: ['yahoo', 'bing'],
+            id: `web-bing-${page}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+            title,
+            url: finalUrl,
+            domain: extractDomain(finalUrl),
+            snippet,
+            engine: 'bing',
+            engines: ['bing', 'web'],
             category: 'general',
           });
         }
@@ -167,87 +262,281 @@ async function fetchYahooWebResults(
 
     return results;
   } catch (e: any) {
-    console.warn('[LiveSearch] Yahoo search error:', e.message);
+    console.warn('[LiveSearch] Bing web index error:', e.message);
     return [];
   }
 }
 
 /**
- * DuckDuckGo HTML Web Search Provider
+ * Optional Brave Search API integration
  */
-async function fetchDuckDuckGoWebResults(
-  searchQuery: string,
+async function fetchBraveApiResults(
+  query: string,
   page: number = 1,
-  language: string = 'auto',
-  region: string = 'auto'
+  apiKey: string
 ): Promise<ZenvoraResultItem[]> {
   try {
-    const reg = (region || 'auto').toLowerCase();
-    const lang = (language || 'auto').toLowerCase();
-    let kl = 'us-en';
-    if (reg === 'de' || lang === 'de') kl = 'de-de';
-    else if (reg === 'fr' || lang === 'fr') kl = 'fr-fr';
-    else if (reg === 'es' || lang === 'es') kl = 'es-es';
-    else if (reg === 'jp' || lang === 'ja') kl = 'jp-jp';
-    else if (reg === 'in') kl = 'in-en';
-    else if (reg === 'gb') kl = 'uk-en';
-    else if (reg === 'us') kl = 'us-en';
-    else if (lang === 'zh') kl = 'cn-zh';
+    const res = await axios.get('https://api.search.brave.com/res/v1/web/search', {
+      params: { q: query, offset: (page - 1) * 10, count: 10 },
+      headers: {
+        Accept: 'application/json',
+        'X-Subscription-Token': apiKey,
+      },
+      timeout: 4500,
+    });
 
-    const postBody = `q=${encodeURIComponent(searchQuery)}&kl=${kl}`;
-    const res = await axios.post(
-      'https://html.duckduckgo.com/html/',
-      postBody,
-      {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout: 4500,
+    const webResults = res.data?.web?.results || [];
+    return webResults.map((item: any, idx: number) => {
+      const itemUrl = cleanUrl(item.url || '');
+      return {
+        id: `brave-${page}-${idx}`,
+        title: sanitizeSnippet(item.title),
+        url: itemUrl,
+        domain: extractDomain(itemUrl),
+        snippet: sanitizeSnippet(item.description),
+        engine: 'brave',
+        engines: ['brave'],
+        category: 'general',
+      };
+    });
+  } catch (e: any) {
+    console.warn('[BraveAPI] Error:', e.message);
+    return [];
+  }
+}
+
+/**
+ * Optional Bing Web Search API integration
+ */
+async function fetchBingApiResults(
+  query: string,
+  page: number = 1,
+  apiKey: string
+): Promise<ZenvoraResultItem[]> {
+  try {
+    const res = await axios.get('https://api.bing.microsoft.com/v7.0/search', {
+      params: { q: query, offset: (page - 1) * 10, count: 10 },
+      headers: {
+        'Ocp-Apim-Subscription-Key': apiKey,
+      },
+      timeout: 4500,
+    });
+
+    const webPages = res.data?.webPages?.value || [];
+    return webPages.map((item: any, idx: number) => {
+      const itemUrl = cleanUrl(item.url || '');
+      return {
+        id: `bing-api-${page}-${idx}`,
+        title: sanitizeSnippet(item.name),
+        url: itemUrl,
+        domain: extractDomain(itemUrl),
+        snippet: sanitizeSnippet(item.snippet),
+        engine: 'bing',
+        engines: ['bing'],
+        category: 'general',
+      };
+    });
+  } catch (e: any) {
+    console.warn('[BingAPI] Error:', e.message);
+    return [];
+  }
+}
+
+/**
+ * Optional Google Custom Search JSON API integration
+ */
+async function fetchGoogleApiResults(
+  query: string,
+  page: number = 1,
+  apiKey: string,
+  cx: string
+): Promise<ZenvoraResultItem[]> {
+  try {
+    const res = await axios.get('https://www.googleapis.com/customsearch/v1', {
+      params: { key: apiKey, cx, q: query, start: (page - 1) * 10 + 1 },
+      timeout: 4500,
+    });
+
+    const items = res.data?.items || [];
+    return items.map((item: any, idx: number) => {
+      const itemUrl = cleanUrl(item.link || '');
+      return {
+        id: `google-api-${page}-${idx}`,
+        title: sanitizeSnippet(item.title),
+        url: itemUrl,
+        domain: extractDomain(itemUrl),
+        snippet: sanitizeSnippet(item.snippet),
+        engine: 'google',
+        engines: ['google'],
+        category: 'general',
+      };
+    });
+  } catch (e: any) {
+    console.warn('[GoogleAPI] Error:', e.message);
+    return [];
+  }
+}
+
+/**
+ * Strictly scoped knowledge infobox lookup.
+ * Only triggers for genuine informational / encyclopedic questions, NOT for domain or website searches.
+ */
+async function fetchScopedInfobox(
+  query: string,
+  category: ZenvoraCategory
+): Promise<ZenvoraInfobox | null> {
+  if (category !== 'general' && category !== 'science' && category !== 'it') {
+    return null;
+  }
+
+  const cleanQ = query.trim();
+
+  // If query is a direct domain or URL, skip encyclopedic infobox
+  if (/^[a-z0-9-]+\.[a-z]{2,}$/i.test(cleanQ) || cleanQ.includes('://')) {
+    return null;
+  }
+
+  // 1. Check DuckDuckGo Instant Answer API for high-confidence entity overview
+  try {
+    const ddgRes = await axios.get('https://api.duckduckgo.com/', {
+      params: { q: cleanQ, format: 'json', no_html: 1, skip_disambig: 1 },
+      timeout: 2500,
+    });
+
+    if (ddgRes.data && ddgRes.data.AbstractText && ddgRes.data.Heading) {
+      return {
+        title: ddgRes.data.Heading,
+        content: sanitizeSnippet(ddgRes.data.AbstractText),
+        url: ddgRes.data.AbstractURL ? cleanUrl(ddgRes.data.AbstractURL) : undefined,
+        source: ddgRes.data.AbstractSource || 'Instant Answer',
+        imgSrc: ddgRes.data.Image || undefined,
+      };
+    }
+  } catch {}
+
+  // 2. Wikipedia Summary ONLY if encyclopedic intent is present
+  if (isExplicitWikiQuery(cleanQ)) {
+    try {
+      const lookupTerm = cleanQ
+        .replace(/^(who is|who was|what is|what are|explain|definition of|define)\s+/i, '')
+        .replace(/\?+$/, '')
+        .trim();
+
+      const summaryRes = await axios.get(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(lookupTerm)}`,
+        {
+          headers: { 'User-Agent': 'ZenvoraSearch/1.0 (privacy@zenvora.example)' },
+          timeout: 2500,
+        }
+      );
+
+      if (
+        summaryRes.data &&
+        summaryRes.data.extract &&
+        summaryRes.data.type !== 'disambiguation'
+      ) {
+        return {
+          title: summaryRes.data.title || lookupTerm,
+          content: sanitizeSnippet(summaryRes.data.extract),
+          url: summaryRes.data.content_urls?.desktop?.page,
+          source: 'Wikipedia',
+          imgSrc: summaryRes.data.thumbnail?.source,
+          attributes: summaryRes.data.description
+            ? [{ label: 'Description', value: summaryRes.data.description }]
+            : undefined,
+        };
       }
-    );
+    } catch {}
+  }
 
-    if (res.status !== 200) return [];
-    const html = res.data || '';
-    const results: ZenvoraResultItem[] = [];
-    const blocks = html.split('class="result results_links');
+  return null;
+}
 
-    for (let i = 1; i < blocks.length; i++) {
-      const block = blocks[i];
-      const titleMatch = block.match(/<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/);
-      const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+/**
+ * Precision Relevance Ranking & Deduplication Engine
+ */
+function rankAndDeduplicateResults(
+  query: string,
+  rawItems: ZenvoraResultItem[]
+): ZenvoraResultItem[] {
+  const cleanQ = query.toLowerCase().trim();
+  const qTokens = cleanQ.split(/\s+/).filter((t) => t.length > 1);
 
-      if (titleMatch) {
-        let rawHref = titleMatch[1];
-        if (rawHref.includes('uddg=')) {
-          const uddgMatch = rawHref.match(/uddg=([^&]+)/);
-          if (uddgMatch) rawHref = decodeURIComponent(uddgMatch[1]);
-        }
+  // 1. Deduplicate by canonical URL
+  const seenUrls = new Set<string>();
+  const uniqueItems: ZenvoraResultItem[] = [];
 
-        const cleanTitle = titleMatch[2].replace(/<[^>]*>/g, '').trim();
-        const snippet = snippetMatch ? sanitizeSnippet(snippetMatch[1].replace(/<[^>]*>/g, '')) : '';
+  for (const item of rawItems) {
+    const normalizedUrl = item.url.replace(/\/$/, '').toLowerCase();
+    if (!seenUrls.has(normalizedUrl)) {
+      seenUrls.add(normalizedUrl);
+      uniqueItems.push(item);
+    }
+  }
 
-        if (cleanTitle && rawHref.startsWith('http')) {
-          const cleanItemUrl = cleanUrl(rawHref);
-          results.push({
-            id: `web-ddg-${page}-${i}-${Math.random().toString(36).substring(2, 7)}`,
-            title: cleanTitle,
-            url: cleanItemUrl,
-            domain: extractDomain(cleanItemUrl),
-            snippet: snippet,
-            engine: 'duckduckgo',
-            engines: ['duckduckgo'],
-            category: 'general',
-          });
-        }
+  // 2. Score each result based on relevance signals
+  const scoredItems = uniqueItems.map((item) => {
+    let score = item.score || 0;
+    const titleLower = item.title.toLowerCase();
+    const snippetLower = item.snippet.toLowerCase();
+    const domainLower = item.domain.toLowerCase();
+
+    // Navigational / Official Boost
+    if (item.isNavigational) {
+      score += 150;
+    }
+
+    // Direct domain match to query (e.g. query "youtube", domain "youtube.com")
+    if (
+      domainLower === cleanQ ||
+      domainLower.startsWith(`${cleanQ}.`) ||
+      domainLower === `www.${cleanQ}`
+    ) {
+      score += 80;
+    } else if (domainLower.includes(cleanQ)) {
+      score += 40;
+    }
+
+    // Exact title match
+    if (titleLower === cleanQ) {
+      score += 60;
+    } else if (titleLower.startsWith(cleanQ)) {
+      score += 45;
+    } else if (titleLower.includes(cleanQ)) {
+      score += 30;
+    }
+
+    // Multi-word token coverage in title
+    let titleMatches = 0;
+    for (const token of qTokens) {
+      if (titleLower.includes(token)) {
+        titleMatches++;
+        score += 15;
+      }
+    }
+    if (qTokens.length > 1 && titleMatches === qTokens.length) {
+      score += 35; // All query words in title
+    }
+
+    // Snippet relevance
+    for (const token of qTokens) {
+      if (snippetLower.includes(token)) {
+        score += 5;
       }
     }
 
-    return results;
-  } catch {
-    return [];
-  }
+    // De-prioritize Wikipedia for non-wiki queries so official sites rank higher
+    if (domainLower.includes('wikipedia.org') && !cleanQ.includes('wiki')) {
+      score -= 25;
+    }
+
+    return { ...item, score };
+  });
+
+  // 3. Sort by score descending
+  scoredItems.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  return scoredItems;
 }
 
 /**
@@ -282,6 +571,7 @@ function augmentZenvoraResults(
         engine: 'zenvora',
         engines: ['zenvora', 'verified', 'official'],
         category: 'general',
+        isNavigational: true,
       });
     }
 
@@ -307,6 +597,7 @@ function augmentZenvoraResults(
         content:
           'Zenvora is an open-source, privacy-first metasearch engine deployed at zenvora-beta.vercel.app. It delivers aggregated web discovery without query logs, behavioral profiling, or tracking cookies, using client-side preference encryption.',
         url: 'https://zenvora-beta.vercel.app/',
+        source: 'Zenvora Official',
         attributes: [
           { label: 'Official Deployment', value: 'https://zenvora-beta.vercel.app' },
           { label: 'Platform', value: 'Vercel Serverless / Node.js / React' },
@@ -320,7 +611,7 @@ function augmentZenvoraResults(
 
 /**
  * Live multi-source metasearch aggregator for standalone / offline development
- * Queries real, live open web sources (Yahoo/Bing index, DuckDuckGo, Wikipedia, Openverse, YouTube, Google News RSS, GitHub, arXiv)
+ * Queries real, live open web sources (Bing decoded web index, DuckDuckGo Official Sites, Openverse, YouTube, Google News RSS, GitHub, arXiv)
  */
 async function fetchLiveMetasearch(
   params: ZenvoraSearchQuery,
@@ -335,36 +626,18 @@ async function fetchLiveMetasearch(
   let totalResultsCount: number | undefined;
 
   const suggestions: string[] = [
-    `${query} wiki`,
+    `${query} tutorial`,
     `${query} latest news`,
-    `${query} review`,
-    `${query} official`,
+    `${query} documentation`,
+    `${query} official site`,
     `${query} overview`,
   ];
 
-  // 1. Wikipedia Page Summary / Instant Answer (only on page 1 for general, science, it)
-  if (page === 1 && (category === 'general' || category === 'science' || category === 'it')) {
-    try {
-      const summaryRes = await axios.get(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`,
-        {
-          headers: { 'User-Agent': 'ZenvoraSearch/1.0 (privacy@zenvora.example)' },
-          timeout: 3500,
-        }
-      );
-      if (summaryRes.data && summaryRes.data.extract) {
-        infoboxes.push({
-          title: summaryRes.data.title || query,
-          content: summaryRes.data.extract,
-          url: summaryRes.data.content_urls?.desktop?.page,
-          imgSrc: summaryRes.data.thumbnail?.source,
-          attributes: summaryRes.data.description
-            ? [{ label: 'Description', value: summaryRes.data.description }]
-            : undefined,
-        });
-      }
-    } catch {
-      // Non-critical, proceed
+  // 1. Scoped Knowledge Panel / Instant Answer (page 1 only)
+  if (page === 1) {
+    const infobox = await fetchScopedInfobox(query, category);
+    if (infobox) {
+      infoboxes.push(infobox);
     }
   }
 
@@ -401,50 +674,6 @@ async function fetchLiveMetasearch(
       });
     } catch (e: any) {
       console.warn('[LiveSearch] Openverse image error:', e.message);
-    }
-
-    // B. Wikipedia PageImages Fallback / Augmentation
-    if (results.length < 5) {
-      try {
-        const wikiImgRes = await axios.get('https://en.wikipedia.org/w/api.php', {
-          params: {
-            action: 'query',
-            generator: 'search',
-            gsrsearch: query,
-            gsroffset: (page - 1) * 12,
-            gsrlimit: 12,
-            prop: 'pageimages|info',
-            inprop: 'url',
-            piprop: 'thumbnail|original',
-            pithumbsize: 600,
-            format: 'json',
-            utf8: 1,
-          },
-          headers: { 'User-Agent': 'ZenvoraSearch/1.0' },
-          timeout: 4000,
-        });
-
-        const pages = Object.values(wikiImgRes.data?.query?.pages || {});
-        pages.forEach((p: any, idx: number) => {
-          if (p.thumbnail || p.original) {
-            results.push({
-              id: `img-wiki-${page}-${idx}`,
-              title: p.title,
-              url: p.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(p.title)}`,
-              domain: 'en.wikipedia.org',
-              snippet: `Wikimedia Commons / Wikipedia reference image for ${p.title}`,
-              engine: 'wikipedia',
-              engines: ['wikipedia'],
-              category: 'images',
-              imgSrc: p.original?.source || p.thumbnail?.source,
-              thumbnail: p.thumbnail?.source,
-              resolution: p.original ? `${p.original.width}x${p.original.height}` : '600x400',
-            });
-          }
-        });
-      } catch (e: any) {
-        console.warn('[LiveSearch] Wikipedia image error:', e.message);
-      }
     }
   } else if (category === 'videos') {
     // YouTube Real-time Video Extraction with Pagination
@@ -616,156 +845,85 @@ async function fetchLiveMetasearch(
     }
   }
 
-  // 3. General Web Search (Live Yahoo/Bing Index + DuckDuckGo + Wikipedia + Google News)
+  // 3. General Web Search (Multi-Tier Execution)
   if (category === 'general' || results.length === 0) {
-    try {
-      // A. Query Live Global Web Index (Yahoo and DuckDuckGo in parallel)
-      let [webYahoo, webDDG] = await Promise.all([
-        fetchYahooWebResults(query, page, params.language, params.region),
-        fetchDuckDuckGoWebResults(query, page, params.language, params.region),
-      ]);
-
-      // If a hyphenated/underscored query returns 0 results, also query with spaces (e.g. "soumyadeep-nandi-portfolio" -> "soumyadeep nandi portfolio")
-      if (webYahoo.length === 0 && webDDG.length === 0 && (query.includes('-') || query.includes('_'))) {
-        const spacedQuery = query.replace(/[-_]+/g, ' ');
-        const [spacedYahoo, spacedDDG] = await Promise.all([
-          fetchYahooWebResults(spacedQuery, page, params.language, params.region),
-          fetchDuckDuckGoWebResults(spacedQuery, page, params.language, params.region),
-        ]);
-        webYahoo = spacedYahoo;
-        webDDG = spacedDDG;
-      }
-
-      const seenUrls = new Set<string>(results.map((r) => r.url));
-      for (const item of [...webYahoo, ...webDDG]) {
-        if (!seenUrls.has(item.url)) {
-          seenUrls.add(item.url);
-          results.push(item);
-        }
-      }
-
-      if (results.length > 0 && typeof totalResultsCount !== 'number') {
-        totalResultsCount = Math.max(results.length * 1500 + 420, 150);
-      }
-    } catch (e: any) {
-      console.warn('[LiveSearch] Web index error:', e.message);
+    // Navigational intent: if query is a domain or website URL, add top direct navigational card
+    const directNav = resolveNavigationalIntent(query, page);
+    if (directNav) {
+      results.push(directNav);
     }
 
-    // B. Wikipedia Knowledge Fallback / Augmentation (only if under 4 results)
-    if (results.length < 4) {
-      try {
-        const lang = (params.language || 'auto').toLowerCase();
-        const reg = (params.region || 'auto').toLowerCase();
-        let wikiLang = 'en';
-        if (['de', 'fr', 'es', 'ja', 'zh'].includes(lang)) {
-          wikiLang = lang;
-        } else if (reg === 'de') {
-          wikiLang = 'de';
-        } else if (reg === 'fr') {
-          wikiLang = 'fr';
-        } else if (reg === 'jp') {
-          wikiLang = 'ja';
-        }
-        const wikiDomain = `${wikiLang}.wikipedia.org`;
+    let webResults: ZenvoraResultItem[] = [];
 
-        const wikiRes = await axios.get(`https://${wikiDomain}/w/api.php`, {
+    // Tier A: Check configured third-party search APIs
+    if (config.braveApiKey) {
+      webResults = await fetchBraveApiResults(query, page, config.braveApiKey);
+    } else if (config.bingApiKey) {
+      webResults = await fetchBingApiResults(query, page, config.bingApiKey);
+    } else if (config.googleApiKey && config.googleCx) {
+      webResults = await fetchGoogleApiResults(query, page, config.googleApiKey, config.googleCx);
+    }
+
+    // Tier B: Live Bing Web Index Aggregator + DuckDuckGo Official Site Resolution
+    if (webResults.length === 0) {
+      const [bingItems, ddgOfficial] = await Promise.all([
+        fetchBingWebResults(query, page, params.language, params.region),
+        page === 1 ? fetchDuckDuckGoOfficialResult(query) : Promise.resolve(null),
+      ]);
+
+      if (ddgOfficial) {
+        webResults.push(ddgOfficial);
+      }
+      webResults.push(...bingItems);
+    }
+
+    // Tier C: If user query explicitly requests Wikipedia, include relevant Wikipedia articles
+    if (isExplicitWikiQuery(query)) {
+      try {
+        const wikiRes = await axios.get('https://en.wikipedia.org/w/api.php', {
           params: {
             action: 'query',
             list: 'search',
             srsearch: query,
-            sroffset: (page - 1) * 10,
-            srlimit: 10,
-            prop: 'info',
-            inprop: 'url',
+            sroffset: (page - 1) * 5,
+            srlimit: 5,
             format: 'json',
             utf8: 1,
           },
-          headers: { 'User-Agent': 'ZenvoraSearch/1.0 (privacy@zenvora.example)' },
-          timeout: 4000,
+          headers: { 'User-Agent': 'ZenvoraSearch/1.0' },
+          timeout: 3000,
         });
-
-        if (typeof wikiRes.data?.query?.searchinfo?.totalhits === 'number' && typeof totalResultsCount !== 'number') {
-          totalResultsCount = wikiRes.data.query.searchinfo.totalhits;
-        }
 
         const searchItems = wikiRes.data?.query?.search || [];
-        const seenUrls = new Set(results.map((r) => r.url));
         searchItems.forEach((item: any, idx: number) => {
-          const itemUrl = `https://${wikiDomain}/wiki/${encodeURIComponent(item.title.replace(/\s+/g, '_'))}`;
-          if (!seenUrls.has(itemUrl)) {
-            seenUrls.add(itemUrl);
-            results.push({
-              id: `wiki-${page}-${idx}-${item.pageid}`,
-              title: item.title,
-              url: itemUrl,
-              domain: wikiDomain,
-              snippet: sanitizeSnippet(item.snippet),
-              engine: 'wikipedia',
-              engines: ['wikipedia', 'duckduckgo'],
-              category: 'general',
-              publishedDate: item.timestamp ? item.timestamp.substring(0, 10) : undefined,
-            });
-          }
+          const itemUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/\s+/g, '_'))}`;
+          webResults.push({
+            id: `wiki-${page}-${idx}-${item.pageid}`,
+            title: item.title,
+            url: itemUrl,
+            domain: 'en.wikipedia.org',
+            snippet: sanitizeSnippet(item.snippet),
+            engine: 'wikipedia',
+            engines: ['wikipedia'],
+            category: 'general',
+            publishedDate: item.timestamp ? item.timestamp.substring(0, 10) : undefined,
+          });
         });
-      } catch (e: any) {
-        console.warn('[LiveSearch] Wikipedia general error:', e.message);
-      }
+      } catch {}
     }
 
-    // C. Top Breaking News on Page 1 (if relevant and under 8 results)
-    if (page === 1 && results.length < 8) {
-      try {
-        const reg = (params.region || 'auto').toLowerCase();
-        const lang = (params.language || 'auto').toLowerCase();
-        let gl = 'US';
-        let hl = 'en-US';
-        let ceid = 'US:en';
+    results.push(...webResults);
 
-        if (reg === 'gb') { gl = 'GB'; hl = 'en-GB'; ceid = 'GB:en'; }
-        else if (reg === 'de' || lang === 'de') { gl = 'DE'; hl = 'de'; ceid = 'DE:de'; }
-        else if (reg === 'fr' || lang === 'fr') { gl = 'FR'; hl = 'fr'; ceid = 'FR:fr'; }
-        else if (reg === 'in') { gl = 'IN'; hl = 'en-IN'; ceid = 'IN:en'; }
-        else if (reg === 'jp' || lang === 'ja') { gl = 'JP'; hl = 'ja'; ceid = 'JP:ja'; }
-        else if (lang === 'es') { gl = 'ES'; hl = 'es'; ceid = 'ES:es'; }
-        else if (lang === 'zh') { gl = 'TW'; hl = 'zh-TW'; ceid = 'TW:zh-Hant'; }
-
-        const newsRes = await axios.get('https://news.google.com/rss/search', {
-          params: { q: query, hl, gl, ceid },
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          timeout: 2500,
-        });
-
-        const newsMatches = [
-          ...newsRes.data.matchAll(
-            /<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>[\s\S]*?<source[^>]*>([\s\S]*?)<\/source>[\s\S]*?<\/item>/g
-          ),
-        ];
-
-        const seenUrls = new Set(results.map((r) => r.url));
-        newsMatches.slice(0, 3).forEach((m: any, idx: number) => {
-          const newsUrl = m[2].trim();
-          if (!seenUrls.has(newsUrl)) {
-            seenUrls.add(newsUrl);
-            results.push({
-              id: `top-news-${idx}`,
-              title: sanitizeSnippet(m[1]),
-              url: newsUrl,
-              domain: extractDomain(newsUrl) || 'news.google.com',
-              snippet: `Breaking news coverage: ${sanitizeSnippet(m[1])} via ${sanitizeSnippet(m[3])}.`,
-              engine: 'google_news',
-              engines: ['google_news'],
-              category: 'general',
-              author: sanitizeSnippet(m[3]),
-            });
-          }
-        });
-      } catch {
-        // Optional enhancement
-      }
+    if (results.length > 0 && typeof totalResultsCount !== 'number') {
+      totalResultsCount = Math.max(results.length * 1500 + 420, 150);
     }
   }
 
-  augmentZenvoraResults(query, category, page, results, infoboxes);
+  // Precision Relevance Ranking & Deduplication
+  const rankedResults = rankAndDeduplicateResults(query, results);
+
+  // First-party Zenvora query augmentation
+  augmentZenvoraResults(query, category, page, rankedResults, infoboxes);
 
   const duration = Number(((Date.now() - startTime) / 1000).toFixed(3));
 
@@ -773,7 +931,7 @@ async function fetchLiveMetasearch(
     query,
     category,
     page,
-    results,
+    results: rankedResults,
     answers: [],
     infoboxes,
     suggestions,
@@ -781,7 +939,7 @@ async function fetchLiveMetasearch(
     numberOfResults:
       totalResultsCount !== undefined
         ? totalResultsCount
-        : Math.max(results.length * 1250 + 380, results.length),
+        : Math.max(rankedResults.length * 1250 + 380, rankedResults.length),
     searchDuration: duration,
     cached: false,
     mock: false,
@@ -813,7 +971,7 @@ export class SearxngService {
       };
     }
 
-    // 2. Query upstream SearXNG JSON endpoint
+    // 2. Query upstream SearXNG JSON endpoint if reachable
     try {
       const searxngUrl = `${config.searxngUrl}/search`;
       let searxLanguage = language === 'auto' ? '' : language;
@@ -872,6 +1030,7 @@ export class SearxngService {
           content: box.content ? sanitizeSnippet(box.content) : '',
           url: box.url ? cleanUrl(box.url) : undefined,
           imgSrc: box.img_src,
+          source: box.engine || 'Upstream',
           attributes: Array.isArray(box.attributes)
             ? box.attributes.map((attr: any) => ({
                 label: String(attr.label || ''),
@@ -880,24 +1039,25 @@ export class SearxngService {
             : undefined,
         }));
 
+        const rankedResults = rankAndDeduplicateResults(query, normalizedResults);
+        augmentZenvoraResults(query, category, page, rankedResults, infoboxes);
+
         const searchDuration = Number(((Date.now() - startTime) / 1000).toFixed(3));
         const suggestions = Array.isArray(rawData.suggestions) ? rawData.suggestions : [];
         const unresponsiveEngines = Array.isArray(rawData.unresponsive_engines)
           ? rawData.unresponsive_engines.map((e: any) => (Array.isArray(e) ? e[0] : String(e)))
           : [];
 
-        augmentZenvoraResults(query, category, page, normalizedResults, infoboxes);
-
         const result: ZenvoraSearchResponse = {
           query,
           category,
           page,
-          results: normalizedResults,
+          results: rankedResults,
           answers: Array.isArray(rawData.answers) ? rawData.answers : [],
           infoboxes,
           suggestions,
           unresponsiveEngines,
-          numberOfResults: rawData.number_of_results || normalizedResults.length,
+          numberOfResults: rawData.number_of_results || rankedResults.length,
           searchDuration,
           cached: false,
         };

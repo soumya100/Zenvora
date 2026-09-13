@@ -52,10 +52,11 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       <h1 className="sr-only">
         {t('searchLabel')}: &ldquo;{query}&rdquo;
       </h1>
-      <div className="border-b border-slate-200 dark:border-zen-bg-darkBorder/80 pb-2 mb-4">
+      <div className="w-full max-w-full border-b border-slate-200 dark:border-zen-bg-darkBorder/80 pb-2 mb-4">
         <CategoryTabs
           activeCategory={category}
           onSelectCategory={onCategoryChange}
+          align="start"
         />
       </div>
 

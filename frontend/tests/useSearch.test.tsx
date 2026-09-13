@@ -15,6 +15,11 @@ describe('useSearch Hook & Tab Switching Behavior', () => {
     page: 1,
     numberOfResults: 100,
     searchDuration: 0.25,
+    answers: [],
+    infoboxes: [],
+    suggestions: [],
+    unresponsiveEngines: [],
+    cached: false,
     results: [
       {
         id: '1',
@@ -35,12 +40,18 @@ describe('useSearch Hook & Tab Switching Behavior', () => {
     page: 1,
     numberOfResults: 50,
     searchDuration: 0.18,
+    answers: [],
+    infoboxes: [],
+    suggestions: [],
+    unresponsiveEngines: [],
+    cached: false,
     results: [
       {
         id: '2',
         title: 'Iron Man Suit Photo',
         url: 'https://images.marvel.com/ironman.jpg',
         domain: 'images.marvel.com',
+        snippet: 'Iron Man suit photo preview',
         imgSrc: 'https://images.marvel.com/ironman.jpg',
         engine: 'bing',
         engines: ['bing'],

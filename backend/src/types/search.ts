@@ -33,6 +33,7 @@ export interface ZenvoraResultItem {
   author?: string;
   duration?: string;
   resolution?: string;
+  isNavigational?: boolean;
 }
 
 export interface ZenvoraInfoboxAttribute {
@@ -45,6 +46,7 @@ export interface ZenvoraInfobox {
   content: string;
   url?: string;
   imgSrc?: string;
+  source?: string;
   attributes?: ZenvoraInfoboxAttribute[];
 }
 

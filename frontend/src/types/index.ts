@@ -23,6 +23,7 @@ export interface SearchResultItem {
   author?: string;
   duration?: string;
   resolution?: string;
+  isNavigational?: boolean;
 }
 
 export interface SearchInfoboxAttribute {
@@ -35,6 +36,7 @@ export interface SearchInfobox {
   content: string;
   url?: string;
   imgSrc?: string;
+  source?: string;
   attributes?: SearchInfoboxAttribute[];
 }
 

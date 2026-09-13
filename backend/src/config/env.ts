@@ -17,4 +17,9 @@ export const config = {
   rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '60', 10),
   mockSearch: process.env.MOCK_SEARCH === 'true',
   cacheTtlMs: 60 * 1000, // 60 seconds LRU cache
+  // Optional external search provider keys for enterprise/production deployments
+  braveApiKey: process.env.BRAVE_SEARCH_API_KEY || '',
+  bingApiKey: process.env.BING_SEARCH_API_KEY || '',
+  googleApiKey: process.env.GOOGLE_SEARCH_API_KEY || '',
+  googleCx: process.env.GOOGLE_SEARCH_CX || '',
 };

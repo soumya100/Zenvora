@@ -47,11 +47,14 @@ export const HomePage: React.FC<HomePageProps> = ({
           Aggregate search results from across the web without query logs, profiling, or tracking cookies.
         </p>
 
-        <div className="mb-4">
-          <CategoryTabs
-            activeCategory={selectedCategory}
-            onSelectCategory={onSelectCategory}
-          />
+        <div className="w-full max-w-full px-1 sm:px-0 mb-6 flex justify-center">
+          <div className="w-full max-w-2xl">
+            <CategoryTabs
+              activeCategory={selectedCategory}
+              onSelectCategory={onSelectCategory}
+              align="center"
+            />
+          </div>
         </div>
 
         <div className="w-full mb-6">
