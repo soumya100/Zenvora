@@ -64,7 +64,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onClick={() => {
             if (currentPage > 1) onPageChange(currentPage - 1);
           }}
-          className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder"
+          className="flex items-center gap-1 min-h-[36px] sm:min-h-[40px] px-3 py-1.5 sm:py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/80 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder hover:border-slate-300 dark:hover:border-slate-600 active:scale-95"
           aria-label={t('prevPage')}
         >
           <ChevronLeft className="w-4 h-4" />
@@ -83,7 +83,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               return (
                 <span
                   key={`ellipsis-${idx}`}
-                  className="w-8 sm:w-10 text-center text-slate-400 dark:text-slate-500 font-bold"
+                  className="w-6 sm:w-8 text-center text-slate-400 dark:text-slate-500 font-bold select-none"
                 >
                   ...
                 </span>
@@ -99,10 +99,10 @@ export const Pagination: React.FC<PaginationProps> = ({
                 type="button"
                 onClick={() => onPageChange(pageNum)}
                 aria-current={isCurrent ? 'page' : undefined}
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-medium transition-all ${
+                className={`min-w-9 sm:min-w-10 h-9 sm:h-10 px-2 sm:px-2.5 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center shrink-0 ${
                   isCurrent
                     ? 'bg-cyan-500 text-white font-bold shadow-md shadow-cyan-500/25 scale-105'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-transparent'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/80 dark:hover:bg-zen-bg-darkSurface border border-transparent hover:border-slate-200 dark:hover:border-zen-bg-darkBorder/80 hover:shadow-xs active:scale-95'
                 }`}
               >
                 {pageNum}
@@ -118,7 +118,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onClick={() => {
             if (currentPage < totalPages && hasMore) onPageChange(currentPage + 1);
           }}
-          className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/70 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder"
+          className="flex items-center gap-1 min-h-[36px] sm:min-h-[40px] px-3 py-1.5 sm:py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-30 disabled:cursor-not-allowed text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/80 dark:hover:bg-zen-bg-darkSurface border border-slate-200 dark:border-zen-bg-darkBorder hover:border-slate-300 dark:hover:border-slate-600 active:scale-95"
           aria-label={t('nextPage')}
         >
           <span className="hidden sm:inline">{t('nextPage')}</span>
