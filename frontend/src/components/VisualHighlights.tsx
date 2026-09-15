@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SearchResultItem } from '../types';
 import { Images, ArrowRight, ExternalLink, X } from 'lucide-react';
+import { getSafeUrl } from '../utils/security';
 
 interface VisualHighlightsProps {
   items: SearchResultItem[];
@@ -129,7 +130,7 @@ export const VisualHighlights: React.FC<VisualHighlightsProps> = ({
 
               <div className="flex items-center gap-2">
                 <a
-                  href={selectedImage.imgSrc || selectedImage.url}
+                  href={getSafeUrl(selectedImage.imgSrc || selectedImage.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-medium text-xs hover:bg-cyan-500 transition-colors inline-flex items-center gap-1.5 shadow-sm"

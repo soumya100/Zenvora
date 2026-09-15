@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { searxngService } from '../services/searxng.service';
 import { config } from '../config/env';
+import { healthRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
-router.get(['/health', '/api/health'], async (req: Request, res: Response) => {
+router.get(['/health', '/api/health'], healthRateLimiter, async (req: Request, res: Response) => {
   const upstream = await searxngService.checkUpstreamHealth();
 
   res.json({

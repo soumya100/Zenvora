@@ -2,6 +2,7 @@ import React from 'react';
 import { SearchResultItem } from '../types';
 import { Play, Clock, User } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import { getSafeUrl } from '../utils/security';
 
 interface VideoGridProps {
   items: SearchResultItem[];
@@ -17,7 +18,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({ items }) => {
       {items.map((item) => (
         <a
           key={item.id}
-          href={item.url}
+          href={getSafeUrl(item.url)}
           target={targetAttr}
           rel={relAttr}
           className="group block rounded-2xl overflow-hidden bg-white/70 dark:bg-zen-bg-darkSurface/60 border border-slate-200 dark:border-zen-bg-darkBorder/70 hover:border-cyan-500/40 hover:shadow-xl transition-all duration-200"

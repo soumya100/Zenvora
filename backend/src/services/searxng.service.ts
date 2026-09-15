@@ -637,6 +637,9 @@ function rankAndDeduplicateResults(
       score += 45;
     }
 
+    // Detect encyclopedic query intent
+    const isWikiQuery = isExplicitWikiQuery(cleanQ);
+
     // Signal 3: Intent-Specific Relevance Scoring
     if (intent.primaryIntent === 'images' || intent.contentType === 'wallpapers') {
       const isWallpaperDomain = KNOWN_WALLPAPER_DOMAINS.some((d) => domainLower.includes(d));
@@ -668,19 +671,42 @@ function rankAndDeduplicateResults(
         }
       }
 
-      // Strongly demote generic video streaming services (Netflix, Disney+, Hotstar)
-      // and Wikipedia biographies when the query specifically requested wallpapers
-      const isStreamingOrBio = /\b(imdb\.com|netflix\.com|disneyplus\.com|hotstar\.com|fandom\.com|wikipedia\.org)\b/i.test(domainLower);
-      if (isStreamingOrBio && !hasWallpaperInTitle) {
-        score -= 75;
+      // Heavily demote encyclopedia / generic bios / streaming catalogs when user specifically wanted wallpapers
+      const isEncyclopediaOrStreaming = /\b(wikipedia\.org|wikidata\.org|imdb\.com|netflix\.com|disneyplus\.com|fandom\.com)\b/i.test(domainLower);
+      if (isEncyclopediaOrStreaming && !hasWallpaperInTitle) {
+        score -= 90;
       }
     } else if (intent.primaryIntent === 'it') {
-      const isTechDocDomain = /\b(docs\.|developer\.|github\.com|npmjs\.com|pypi\.org|stackoverflow\.com|w3schools\.com|mozilla\.org|dev\.to)\b/i.test(domainLower);
+      const isTechDocDomain = /\b(docs\.|developer\.|github\.com|npmjs\.com|pypi\.org|stackoverflow\.com|w3schools\.com|mozilla\.org|dev\.to|pkg\.go\.dev|crates\.io)\b/i.test(domainLower);
       if (isTechDocDomain) {
         score += 70;
       }
-      if (/\b(documentation|docs|guide|tutorial|api|reference|cheat sheet)\b/i.test(titleLower)) {
+      if (/\b(documentation|docs|guide|tutorial|api|reference|syntax|cheat sheet|sdk)\b/i.test(titleLower)) {
         score += 50;
+      }
+      // Demote Wikipedia for programming syntax/library queries
+      if (domainLower.includes('wikipedia.org') && !isWikiQuery) {
+        score -= 40;
+      }
+    } else if (intent.primaryIntent === 'news') {
+      const isNewsOutlet = /\b(news|reuters\.com|apnews\.com|bbc\.com|cnn\.com|bloomberg\.com|theguardian\.com)\b/i.test(domainLower);
+      if (isNewsOutlet) {
+        score += 60;
+      }
+      if (domainLower.includes('wikipedia.org') && !isWikiQuery) {
+        score -= 50;
+      }
+    }
+
+    // Product / Shopping intent detection
+    const isProductQuery = /\b(buy|price|cost|deals?|specs?|specification|review|reviews|laptop|phone|shoes|headphones|gpu|cpu|monitor)\b/i.test(cleanQ);
+    if (isProductQuery) {
+      const isProductOrReviewSite = /\b(amazon\.|ebay\.|bestbuy\.|rtings\.com|gsmarena\.com|tomsguide\.com|techradar\.com|theverge\.com|wirecutter\.com)\b/i.test(domainLower);
+      if (isProductOrReviewSite) {
+        score += 65;
+      }
+      if (domainLower.includes('wikipedia.org') && !isWikiQuery) {
+        score -= 50;
       }
     }
 
@@ -719,11 +745,16 @@ function rankAndDeduplicateResults(
     }
 
     // Signal 7: Wikipedia De-prioritization for non-encyclopedic queries
-    if (domainLower.includes('wikipedia.org') && !cleanQ.includes('wiki') && !intent.isQuestion) {
-      score -= 30;
+    if (domainLower.includes('wikipedia.org') && !isWikiQuery && !intent.isQuestion) {
+      score -= 35;
     }
 
-    // Signal 8: Irrelevance penalty (zero query tokens found in title, snippet, or domain)
+    // Signal 8: Engine Agreement Signal
+    if (Array.isArray(item.engines) && item.engines.length > 1) {
+      score += item.engines.length * 10;
+    }
+
+    // Signal 9: Irrelevance penalty (zero query tokens found in title, snippet, or domain)
     if (qTokens.length > 0 && !item.isNavigational) {
       const hasAnyToken = qTokens.some(
         (t) => titleLower.includes(t) || snippetLower.includes(t) || domainLower.includes(t)
@@ -733,7 +764,16 @@ function rankAndDeduplicateResults(
       }
     }
 
-    return { ...item, score };
+    // Ensure normalized field presence
+    const normalizedItem: ZenvoraResultItem = {
+      ...item,
+      score,
+      sourceType: item.sourceType || (item.category === 'images' ? 'image' : item.category === 'news' ? 'news' : 'web'),
+      imageUrl: item.imageUrl || item.imgSrc,
+      publishedAt: item.publishedAt || item.publishedDate,
+    };
+
+    return normalizedItem;
   });
 
   // Filter out heavily penalized unrelated results when good matches exist

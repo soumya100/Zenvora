@@ -1,54 +1,16 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
+import { searchQuerySchema, suggestionQuerySchema } from '../schemas/validation';
 import { searxngService } from '../services/searxng.service';
 import { suggestionService } from '../services/suggestion.service';
+import { aiService } from '../services/ai.service';
 import { searchRateLimiter } from '../middleware/rateLimiter';
 import { ZenvoraCategory } from '../types/search';
 
 const router = Router();
 
-const searchQuerySchema = z.object({
-  q: z
-    .string({ required_error: 'Query parameter "q" is required.' })
-    .trim()
-    .min(1, 'Query must not be empty.')
-    .max(256, 'Query exceeds maximum allowed length of 256 characters.'),
-  category: z
-    .enum(['general', 'news', 'images', 'videos', 'science', 'it'])
-    .optional()
-    .default('general'),
-  page: z
-    .coerce
-    .number()
-    .int()
-    .min(1, 'Page must be at least 1')
-    .max(100, 'Page cannot exceed 100')
-    .optional()
-    .default(1),
-  safesearch: z
-    .coerce
-    .number()
-    .int()
-    .min(0)
-    .max(2)
-    .optional()
-    .default(1),
-  language: z.string().max(10).optional().default('auto'),
-  region: z.string().max(10).optional().default('auto'),
-  timeRange: z.enum(['', 'day', 'week', 'month', 'year']).optional().default(''),
-});
-
-const suggestionQuerySchema = z.object({
-  q: z
-    .string({ required_error: 'Query parameter "q" is required.' })
-    .trim()
-    .min(1, 'Query must not be empty.')
-    .max(100, 'Query exceeds maximum allowed length.'),
-});
-
 /**
  * GET /api/search
- * Executes privacy-focused metasearch query
+ * Executes privacy-focused metasearch query with optional AI intent intelligence.
  */
 router.get(
   '/search',
@@ -68,7 +30,39 @@ router.get(
         return;
       }
 
-      const { q, category, page, safesearch, language, region, timeRange } = validation.data;
+      let { q, category, type, page, safesearch, language, region, timeRange } = validation.data;
+
+      // Map explicit user type selection to category if specified
+      if (type) {
+        if (type === 'images') category = 'images';
+        else if (type === 'news') category = 'news';
+        else if (type === 'web') category = 'general';
+        else if (type === 'videos') category = 'videos';
+        else if (type === 'it') category = 'it';
+        else if (type === 'science') category = 'science';
+      }
+
+      // Check if user explicitly provided category/type in original query
+      const explicitUserSelection = req.query.category !== undefined || req.query.type !== undefined;
+
+      // Optional NVIDIA Nemotron query understanding (never overrides explicit user selection)
+      let aiIntent: any = undefined;
+      try {
+        aiIntent = await aiService.classifyAndRewriteQuery(
+          q,
+          explicitUserSelection ? (category as string) : undefined
+        );
+
+        // If no explicit category was specified by user and Nemotron has high confidence for images,
+        // we can adjust category if appropriate
+        if (!explicitUserSelection && aiIntent && aiIntent.confidence >= 0.9) {
+          if (aiIntent.intent === 'images') {
+            // Keep general category to show web results + visual highlights strip
+          }
+        }
+      } catch {
+        // AI failure must never break ordinary search
+      }
 
       const results = await searxngService.search({
         q,
@@ -79,6 +73,11 @@ router.get(
         region,
         timeRange,
       });
+
+      // Augment with AI classification metadata if present
+      if (aiIntent) {
+        results.aiIntent = aiIntent;
+      }
 
       res.json(results);
     } catch (err) {

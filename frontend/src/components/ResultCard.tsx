@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SearchResultItem } from '../types';
 import { ExternalLink, Copy, Check, Lock, Sparkles } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import { getSafeUrl } from '../utils/security';
 
 interface ResultCardProps {
   item: SearchResultItem;
@@ -24,8 +25,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ item, query }) => {
   const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
 
   const engineLabel = item.engines && item.engines.length > 0 ? item.engines.join(', ') : item.engine;
-  const isSafeUrl = item.url && (item.url.startsWith('https://') || item.url.startsWith('http://'));
-  const safeHref = isSafeUrl ? item.url : '#';
+  const safeHref = getSafeUrl(item.url);
 
   return (
     <article className={`group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 ${

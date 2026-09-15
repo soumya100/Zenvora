@@ -6,24 +6,35 @@ export type SearchCategory =
   | 'science'
   | 'it';
 
+export interface NemotronClassification {
+  intent: 'web' | 'images' | 'news';
+  rewrittenQuery: string;
+  entities: string[];
+  constraints: string[];
+  confidence: number;
+}
+
 export interface SearchResultItem {
   id: string;
   title: string;
   url: string;
   domain: string;
   snippet: string;
-  engine: string;
+  engine?: string;
   engines: string[];
   category: string;
   score?: number;
   thumbnail?: string;
   imgSrc?: string;
+  imageUrl?: string;
   sourceUrl?: string;
   publishedDate?: string;
+  publishedAt?: string;
   author?: string;
   duration?: string;
   resolution?: string;
   isNavigational?: boolean;
+  sourceType?: 'web' | 'image' | 'news';
 }
 
 export interface SearchInfoboxAttribute {
@@ -65,6 +76,7 @@ export interface SearchResponse {
   cached: boolean;
   mock?: boolean;
   queryIntent?: QueryIntent;
+  aiIntent?: NemotronClassification;
   imageHighlights?: SearchResultItem[];
 }
 
@@ -85,4 +97,3 @@ export interface UserSettings {
 }
 
 export type ActivePage = 'home' | 'results' | 'privacy' | 'about';
-

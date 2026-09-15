@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SearchInfobox } from '../types';
 import { BookOpen, ExternalLink, Sparkles } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import { getSafeUrl } from '../utils/security';
 
 interface InstantAnswerProps {
   infobox: SearchInfobox;
@@ -26,7 +27,7 @@ export const InstantAnswer: React.FC<InstantAnswerProps> = ({ infobox }) => {
             <span>{infobox.title}</span>
             {infobox.url && (
               <a
-                href={infobox.url}
+                href={getSafeUrl(infobox.url)}
                 target={targetAttr}
                 rel={relAttr}
                 className="text-xs text-slate-400 hover:text-cyan-500 inline-flex items-center gap-1 font-normal font-sans"

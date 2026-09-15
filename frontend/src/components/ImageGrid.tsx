@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SearchResultItem } from '../types';
 import { ExternalLink, X, Download } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import { getSafeUrl } from '../utils/security';
 
 interface ImageGridProps {
   items: SearchResultItem[];
@@ -99,7 +100,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <a
-                  href={selectedImage.imgSrc || selectedImage.url}
+                  href={getSafeUrl(selectedImage.imgSrc || selectedImage.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zen-bg-darkBorder text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zen-bg-darkSurface transition-colors text-xs font-medium"
@@ -108,7 +109,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
                   View Original
                 </a>
                 <a
-                  href={selectedImage.url}
+                  href={getSafeUrl(selectedImage.url)}
                   target={targetAttr}
                   rel={relAttr}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white transition-colors text-xs font-medium shadow-sm"

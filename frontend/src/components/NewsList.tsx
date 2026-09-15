@@ -2,6 +2,7 @@ import React from 'react';
 import { SearchResultItem } from '../types';
 import { Newspaper, ExternalLink, Calendar } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
+import { getSafeUrl } from '../utils/security';
 
 interface NewsListProps {
   items: SearchResultItem[];
@@ -34,7 +35,7 @@ export const NewsList: React.FC<NewsListProps> = ({ items }) => {
 
           <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
             <a
-              href={item.url}
+              href={getSafeUrl(item.url)}
               target={targetAttr}
               rel={relAttr}
               className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors inline-flex items-baseline gap-1"
