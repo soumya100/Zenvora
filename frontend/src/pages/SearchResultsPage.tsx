@@ -5,6 +5,7 @@ import { ImageGrid } from '../components/ImageGrid';
 import { VideoGrid } from '../components/VideoGrid';
 import { NewsList } from '../components/NewsList';
 import { InstantAnswer } from '../components/InstantAnswer';
+import { AiOverview } from '../components/AiOverview';
 import { VisualHighlights } from '../components/VisualHighlights';
 import { Pagination } from '../components/Pagination';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
@@ -100,6 +101,10 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
       {!isLoading && !error && results.length > 0 && (!response || response.category === category) && (
         <div className="max-w-4xl">
+          {category === 'general' && (
+            <AiOverview query={query} category={category} searchResults={results} />
+          )}
+
           {response?.infoboxes && response.infoboxes.length > 0 && category === 'general' && (
             <InstantAnswer infobox={response.infoboxes[0]} />
           )}

@@ -17,11 +17,14 @@ export function createApp(): express.Application {
   // Trust first proxy hop (Caddy or Vercel edge)
   app.set('trust proxy', 1);
 
-  // Security headers via Helmet
+  // Security headers via Helmet (configured for seamless metasearch navigation)
   app.use(
     helmet({
       contentSecurityPolicy: false, // Handled at Caddy / Reverse Proxy layer
       crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: { policy: 'unsafe-none' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'no-referrer' },
     })
   );
 

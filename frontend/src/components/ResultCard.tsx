@@ -22,7 +22,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ item, query }) => {
   };
 
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
-  const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
+  const relAttr = 'noopener noreferrer';
 
   const engineLabel = item.engines && item.engines.length > 0 ? item.engines.join(', ') : item.engine;
   const safeHref = getSafeUrl(item.url);

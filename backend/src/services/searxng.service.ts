@@ -165,6 +165,7 @@ function resolveNavigationalIntent(query: string, page: number = 1): ZenvoraResu
  */
 async function fetchDuckDuckGoOfficialResult(query: string): Promise<ZenvoraResultItem | null> {
   try {
+    const isWiki = isExplicitWikiQuery(query);
     const res = await axios.get('https://api.duckduckgo.com/', {
       params: { q: query.trim(), format: 'json', no_html: 1, skip_disambig: 1 },
       timeout: 2500,
@@ -176,6 +177,12 @@ async function fetchDuckDuckGoOfficialResult(query: string): Promise<ZenvoraResu
       if (topResult.FirstURL && topResult.FirstURL.startsWith('http')) {
         const cleanItemUrl = cleanUrl(topResult.FirstURL);
         const domain = extractDomain(cleanItemUrl);
+
+        // Never mark Wikipedia as the official website unless encyclopedic intent was explicitly requested
+        if (domain.includes('wikipedia.org') && !isWiki) {
+          return null;
+        }
+
         const title = sanitizeSnippet(topResult.Text || data.Heading || query);
 
         return {
@@ -196,6 +203,12 @@ async function fetchDuckDuckGoOfficialResult(query: string): Promise<ZenvoraResu
       const targetUrl = data.AbstractURL ? cleanUrl(data.AbstractURL) : undefined;
       if (targetUrl && targetUrl.startsWith('http')) {
         const domain = extractDomain(targetUrl);
+
+        // Only return Wikipedia abstract reference if the query actually has encyclopedic/definition intent
+        if (domain.includes('wikipedia.org') && !isWiki) {
+          return null;
+        }
+
         return {
           id: `ddg-reference-${domain}`,
           title: `${data.Heading} — Reference & Overview`,
@@ -745,8 +758,8 @@ function rankAndDeduplicateResults(
     }
 
     // Signal 7: Wikipedia De-prioritization for non-encyclopedic queries
-    if (domainLower.includes('wikipedia.org') && !isWikiQuery && !intent.isQuestion) {
-      score -= 35;
+    if (domainLower.includes('wikipedia.org') && !isWikiQuery) {
+      score -= intent.isQuestion ? 25 : 65;
     }
 
     // Signal 8: Engine Agreement Signal

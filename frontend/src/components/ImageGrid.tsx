@@ -13,7 +13,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({ items }) => {
   const [selectedImage, setSelectedImage] = useState<SearchResultItem | null>(null);
 
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
-  const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
+  const relAttr = 'noopener noreferrer';
 
   return (
     <div>

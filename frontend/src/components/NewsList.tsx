@@ -11,7 +11,7 @@ interface NewsListProps {
 export const NewsList: React.FC<NewsListProps> = ({ items }) => {
   const { settings } = useSettings();
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
-  const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
+  const relAttr = 'noopener noreferrer';
 
   return (
     <div className="space-y-3 sm:space-y-4">

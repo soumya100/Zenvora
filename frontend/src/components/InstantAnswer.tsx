@@ -12,7 +12,7 @@ export const InstantAnswer: React.FC<InstantAnswerProps> = ({ infobox }) => {
   const { settings } = useSettings();
   const [imageFailed, setImageFailed] = useState(false);
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
-  const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
+  const relAttr = 'noopener noreferrer';
 
   return (
     <div className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-cyan-500/5 via-indigo-500/5 to-transparent dark:from-cyan-950/20 dark:via-indigo-950/20 dark:to-transparent border border-cyan-500/20 dark:border-cyan-500/30 shadow-md">

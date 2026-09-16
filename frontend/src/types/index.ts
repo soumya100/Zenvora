@@ -97,3 +97,55 @@ export interface UserSettings {
 }
 
 export type ActivePage = 'home' | 'results' | 'privacy' | 'about';
+
+export interface AiOverviewSource {
+  id: string;
+  title: string;
+  url: string;
+  domain: string;
+  snippet?: string;
+  favicon?: string;
+}
+
+export interface AiOverviewResponse {
+  query: string;
+  answer: string;
+  sources: AiOverviewSource[];
+  status: 'success' | 'insufficient_sources' | 'error';
+}
+
+export interface AiOverviewState {
+  data: AiOverviewResponse | null;
+  isLoading: boolean;
+  isStreaming: boolean;
+  error: string | null;
+}
+
+export interface AiOverviewChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: AiOverviewSource[];
+  timestamp: number;
+}
+
+export interface AiOverviewChatRequest {
+  conversationId?: string;
+  originalQuery: string;
+  message: string;
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  searchResults?: Array<{
+    title: string;
+    url: string;
+    domain?: string;
+    snippet?: string;
+  }>;
+  stream?: boolean;
+}
+
+export interface AiOverviewChatResponse {
+  reply: string;
+  sources: AiOverviewSource[];
+  status?: string;
+}
+

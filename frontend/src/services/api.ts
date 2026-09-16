@@ -1,4 +1,12 @@
-import { SearchCategory, SearchResponse } from '../types';
+import {
+  SearchCategory,
+  SearchResponse,
+  SearchResultItem,
+  AiOverviewResponse,
+  AiOverviewSource,
+  AiOverviewChatRequest,
+  AiOverviewChatResponse,
+} from '../types';
 
 const API_BASE = '/api';
 
@@ -66,6 +74,245 @@ export class SearchApiService {
       return Array.isArray(data.suggestions) ? data.suggestions : [];
     } catch {
       return [];
+    }
+  }
+
+  async getAiOverview(
+    query: string,
+    searchResults?: SearchResultItem[],
+    signal?: AbortSignal
+  ): Promise<AiOverviewResponse> {
+    const cleanQ = query.trim();
+    if (!cleanQ) {
+      return { query: '', answer: '', sources: [], status: 'error' };
+    }
+
+    const payload: any = {
+      query: cleanQ,
+      stream: false,
+    };
+
+    if (searchResults && searchResults.length > 0) {
+      payload.searchResults = searchResults.slice(0, 10).map((r) => ({
+        title: r.title,
+        url: r.url,
+        domain: r.domain,
+        snippet: r.snippet,
+      }));
+    }
+
+    const res = await fetch(`${API_BASE}/ai/overview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal,
+    });
+
+    if (!res.ok) {
+      let msg = 'Failed to generate AI Overview.';
+      try {
+        const err = await res.json();
+        if (err?.error?.message) msg = err.error.message;
+      } catch {}
+      throw new Error(msg);
+    }
+
+    return await res.json();
+  }
+
+  async streamAiOverview(
+    query: string,
+    searchResults: SearchResultItem[] | undefined,
+    callbacks: {
+      onSources?: (sources: AiOverviewSource[], status: string) => void;
+      onDelta?: (delta: string, accumulated: string) => void;
+      onDone?: (data: AiOverviewResponse) => void;
+      onError?: (err: Error) => void;
+    },
+    signal?: AbortSignal
+  ): Promise<void> {
+    const cleanQ = query.trim();
+    if (!cleanQ) return;
+
+    const payload: any = {
+      query: cleanQ,
+      stream: true,
+    };
+
+    if (searchResults && searchResults.length > 0) {
+      payload.searchResults = searchResults.slice(0, 10).map((r) => ({
+        title: r.title,
+        url: r.url,
+        domain: r.domain,
+        snippet: r.snippet,
+      }));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/ai/overview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+
+      if (!res.ok || !res.body) {
+        // Fallback to standard fetch
+        const data = await this.getAiOverview(query, searchResults, signal);
+        callbacks.onSources?.(data.sources, data.status);
+        callbacks.onDelta?.(data.answer, data.answer);
+        callbacks.onDone?.(data);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const dataStr = trimmed.replace(/^data:\s*/, '');
+          if (dataStr === '[DONE]') {
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.type === 'sources') {
+              callbacks.onSources?.(parsed.sources || [], parsed.status || 'success');
+            } else if (parsed.type === 'delta') {
+              callbacks.onDelta?.(parsed.delta, parsed.accumulated);
+            } else if (parsed.type === 'done') {
+              callbacks.onDone?.({
+                query: parsed.query || cleanQ,
+                answer: parsed.answer || '',
+                sources: parsed.sources || [],
+                status: parsed.status || 'success',
+              });
+            } else if (parsed.error) {
+              throw new Error(parsed.error.message || 'Stream error occurred.');
+            }
+          } catch (e) {
+            // Ignore malformed intermediate chunks
+          }
+        }
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      callbacks.onError?.(err);
+    }
+  }
+
+  async sendAiOverviewChat(
+    payload: AiOverviewChatRequest,
+    signal?: AbortSignal
+  ): Promise<AiOverviewChatResponse> {
+    const res = await fetch(`${API_BASE}/ai/overview/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal,
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson?.error?.message || `Follow-up failed with status ${res.status}`);
+    }
+
+    return await res.json();
+  }
+
+  async streamAiOverviewChat(
+    payload: AiOverviewChatRequest,
+    callbacks: {
+      onSources?: (sources: AiOverviewSource[]) => void;
+      onDelta?: (delta: string, accumulated: string) => void;
+      onDone?: (data: AiOverviewChatResponse) => void;
+      onError?: (err: Error) => void;
+    },
+    signal?: AbortSignal
+  ): Promise<void> {
+    try {
+      const res = await fetch(`${API_BASE}/ai/overview/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({ ...payload, stream: true }),
+        signal,
+      });
+
+      if (!res.ok || !res.body) {
+        // Fallback to JSON fetch
+        const data = await this.sendAiOverviewChat(payload, signal);
+        callbacks.onSources?.(data.sources);
+        callbacks.onDelta?.(data.reply, data.reply);
+        callbacks.onDone?.(data);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const dataStr = trimmed.replace(/^data:\s*/, '');
+          if (dataStr === '[DONE]') {
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.type === 'sources') {
+              callbacks.onSources?.(parsed.sources || []);
+            } else if (parsed.type === 'delta') {
+              callbacks.onDelta?.(parsed.delta, parsed.accumulated);
+            } else if (parsed.type === 'done') {
+              callbacks.onDone?.({
+                reply: parsed.reply || '',
+                sources: parsed.sources || [],
+                status: parsed.status,
+              });
+            } else if (parsed.error) {
+              throw new Error(parsed.error.message || 'Stream error occurred.');
+            }
+          } catch {
+            // Ignore malformed chunks
+          }
+        }
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      callbacks.onError?.(err);
     }
   }
 

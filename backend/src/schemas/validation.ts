@@ -142,7 +142,73 @@ export const nemotronClassificationSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
+/**
+ * Input source item for AI Overview generation.
+ */
+export const aiOverviewSourceInputSchema = z.object({
+  title: z.string().trim().max(500),
+  url: z.string().trim().max(2048),
+  domain: z.string().trim().max(256).optional(),
+  snippet: z.string().trim().max(2000).optional(),
+});
+
+/**
+ * AI Overview request body schema.
+ */
+export const aiOverviewRequestSchema = z
+  .object({
+    query: z
+      .string({ required_error: 'Query parameter "query" is required.' })
+      .trim()
+      .min(1, 'Query must not be empty.')
+      .max(256, 'Query exceeds maximum allowed length of 256 characters.'),
+    searchResults: z.array(aiOverviewSourceInputSchema).max(20).optional(),
+    stream: z.boolean().optional().default(false),
+  })
+  .strict();
+
 export type NemotronClassification = z.infer<typeof nemotronClassificationSchema>;
 export type SearchQueryParams = z.infer<typeof searchQuerySchema>;
 export type ImageProxyQueryParams = z.infer<typeof imageProxyQuerySchema>;
 export type AiChatRequestBody = z.infer<typeof aiChatRequestSchema>;
+export type AiOverviewRequestBody = z.infer<typeof aiOverviewRequestSchema>;
+export type AiOverviewSourceInput = z.infer<typeof aiOverviewSourceInputSchema>;
+
+/**
+ * Message schema for AI Overview conversation history.
+ */
+export const aiOverviewChatMessageSchema = z
+  .object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z
+      .string({ required_error: 'Content is required.' })
+      .trim()
+      .min(1, 'Content must not be empty.')
+      .max(2000, 'Content exceeds 2000 characters.'),
+  })
+  .strict();
+
+/**
+ * AI Overview follow-up chat request body schema.
+ */
+export const aiOverviewChatRequestSchema = z
+  .object({
+    conversationId: z.string().trim().max(100).optional(),
+    originalQuery: z
+      .string({ required_error: 'originalQuery is required.' })
+      .trim()
+      .min(1, 'originalQuery must not be empty.')
+      .max(256),
+    message: z
+      .string({ required_error: 'Message is required.' })
+      .trim()
+      .min(1, 'Message must not be empty.')
+      .max(1000, 'Message exceeds 1000 characters.'),
+    conversationHistory: z.array(aiOverviewChatMessageSchema).max(20).optional().default([]),
+    searchResults: z.array(aiOverviewSourceInputSchema).max(20).optional(),
+    stream: z.boolean().optional().default(false),
+  })
+  .strict();
+
+export type AiOverviewChatMessage = z.infer<typeof aiOverviewChatMessageSchema>;
+export type AiOverviewChatRequestBody = z.infer<typeof aiOverviewChatRequestSchema>;

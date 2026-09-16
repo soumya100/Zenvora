@@ -11,7 +11,7 @@ interface VideoGridProps {
 export const VideoGrid: React.FC<VideoGridProps> = ({ items }) => {
   const { settings } = useSettings();
   const targetAttr = settings.openInNewTab ? '_blank' : '_self';
-  const relAttr = settings.openInNewTab ? 'noopener noreferrer' : undefined;
+  const relAttr = 'noopener noreferrer';
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
