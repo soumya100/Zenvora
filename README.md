@@ -87,7 +87,7 @@ Make sure you have [Docker](https://docs.docker.com/get-docker/) installed.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/zenvora.git
+git clone https://github.com/soumya100/zenvora.git
 cd zenvora
 
 # 2. Configure environment
