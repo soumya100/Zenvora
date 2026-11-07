@@ -5,7 +5,9 @@ export type PrimaryIntent =
   | 'news'
   | 'it'
   | 'science'
-  | 'navigational';
+  | 'navigational'
+  | 'person'
+  | 'entity';
 
 export interface QueryIntent {
   primaryIntent: PrimaryIntent;
@@ -15,8 +17,33 @@ export interface QueryIntent {
   styleModifiers: string[];
   targetDevice?: string;
   isQuestion: boolean;
+  isPerson?: boolean;
+  isEntity?: boolean;
+  entityType?: 'person' | 'organization' | 'place' | 'concept' | 'general';
+  entityAttributes?: string[];
   rawQuery: string;
 }
+
+// Person and biographical patterns
+const PERSON_PREFIX_PATTERNS = [
+  /^(who\s+(?:is|was|are|were)|biography\s+of|bio\s+of|profile\s+of|life\s+of|history\s+of|facts\s+about|all\s+about)\s+/i,
+];
+
+const PERSON_HONORIFICS = [
+  'dr', 'prof', 'professor', 'sir', 'lord', 'lady', 'mr', 'mrs', 'ms',
+  'president', 'prime minister', 'ceo', 'founder', 'saint', 'pope',
+  'king', 'queen', 'prince', 'princess', 'senator', 'governor', 'judge'
+];
+
+const PERSON_ATTRIBUTES = [
+  'net worth', 'networth', 'wealth', 'salary', 'fortune',
+  'age', 'birthday', 'birth date', 'born', 'died', 'death date',
+  'spouse', 'wife', 'husband', 'partner', 'married to',
+  'children', 'daughter', 'son', 'family', 'parents', 'father', 'mother',
+  'education', 'college', 'university', 'alma mater', 'degree',
+  'height', 'weight', 'nationality', 'religion',
+  'career', 'awards', 'quotes', 'books', 'movies', 'songs', 'inventions'
+];
 
 // Visual and wallpaper keyword patterns
 const WALLPAPER_KEYWORDS = ['wallpaper', 'wallpapers', 'background', 'backgrounds', 'lockscreen', 'screensaver'];
@@ -137,12 +164,68 @@ export function parseQueryIntent(rawQuery: string): QueryIntent {
     primaryIntent = 'navigational';
   }
 
+  // 4b. Person & Entity Intent Detection
+  let isPerson = false;
+  let isEntity = false;
+  let entityType: 'person' | 'organization' | 'place' | 'concept' | 'general' = 'general';
+  const foundAttributes: string[] = [];
+
+  // Detect explicit biographical prefixes ("who is X", "biography of X")
+  let biographicalSubject: string | undefined;
+  for (const prefixPat of PERSON_PREFIX_PATTERNS) {
+    if (prefixPat.test(lower)) {
+      isPerson = true;
+      biographicalSubject = query.replace(prefixPat, '').replace(/[?.,!&]/g, '').trim();
+      break;
+    }
+  }
+
+  // Detect person honorifics ("dr", "prof", "president", "ceo")
+  const hasHonorific = PERSON_HONORIFICS.some((h) => new RegExp(`\\b${h}\\b`, 'i').test(lower));
+  if (hasHonorific) {
+    isPerson = true;
+  }
+
+  // Detect person attribute inquiries ("elon musk net worth", "einstein birthday")
+  for (const attr of PERSON_ATTRIBUTES) {
+    const attrRegex = new RegExp(`\\b${attr}\\b`, 'i');
+    if (attrRegex.test(lower)) {
+      foundAttributes.push(attr);
+      isPerson = true;
+    }
+  }
+
+  // Detect 2-4 word proper name pattern (e.g. "Elon Musk", "Albert Einstein", "Taylor Swift", "Sundar Pichai")
+  const words = query.split(/\s+/).filter(Boolean);
+  const isLikelyProperName =
+    words.length >= 2 &&
+    words.length <= 4 &&
+    !isNavigational &&
+    !isWallpaper &&
+    !isTech &&
+    !isVideo &&
+    !isScience &&
+    !/\b(how|what|why|where|when|can|is|are|the|best|top|buy|cheap|download|free|online)\b/i.test(words[0]);
+
+  if (isLikelyProperName) {
+    isPerson = true;
+  }
+
+  if (isPerson) {
+    isEntity = true;
+    entityType = 'person';
+    if (primaryIntent === 'general') {
+      primaryIntent = 'person';
+      contentType = 'biography';
+    }
+  }
+
   // 5. Question Detection
   const isQuestion = QUESTION_PATTERNS.some((pat) => pat.test(lower)) || query.endsWith('?');
 
   // 6. Core Subject Extraction
-  // Strip out known modifiers, content types, and noise to isolate the main subject
-  let cleanSubject = query;
+  // Strip out known modifiers, content types, prefixes and noise to isolate the main subject
+  let cleanSubject = biographicalSubject || query;
   const tokensToRemove = [
     ...WALLPAPER_KEYWORDS,
     ...IMAGE_KEYWORDS,
@@ -153,6 +236,7 @@ export function parseQueryIntent(rawQuery: string): QueryIntent {
     ...QUALITY_MODIFIERS,
     ...STYLE_MODIFIERS,
     ...DEVICE_MODIFIERS,
+    ...PERSON_ATTRIBUTES,
   ];
 
   for (const token of tokensToRemove) {
@@ -165,6 +249,14 @@ export function parseQueryIntent(rawQuery: string): QueryIntent {
     cleanSubject = query;
   }
 
+  // Normalize proper name casing (e.g. "elon musk" -> "Elon Musk")
+  if (isPerson && cleanSubject.length > 0) {
+    cleanSubject = cleanSubject
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
   return {
     primaryIntent,
     subject: cleanSubject,
@@ -173,6 +265,10 @@ export function parseQueryIntent(rawQuery: string): QueryIntent {
     styleModifiers: foundStyle,
     targetDevice,
     isQuestion,
+    isPerson,
+    isEntity,
+    entityType,
+    entityAttributes: foundAttributes,
     rawQuery: query,
   };
 }

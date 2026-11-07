@@ -59,6 +59,8 @@ export function deterministicFallbackClassification(query: string): NemotronClas
   const entities: string[] = [];
   if (parsed.subject && parsed.subject !== cleanQ) {
     entities.push(parsed.subject);
+  } else if (parsed.isPerson || parsed.isEntity) {
+    entities.push(parsed.subject || cleanQ);
   }
 
   const constraints = [
