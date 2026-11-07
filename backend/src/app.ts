@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
+import fs from 'fs';
 import { config } from './config/env';
 import searchRoutes from './routes/search.routes';
 import healthRoutes from './routes/health.routes';
@@ -92,6 +94,29 @@ export function createApp(): express.Application {
   app.use('/api', healthRoutes);
   app.use('/api', aiRoutes);
   app.use('/api', imageProxyRoutes);
+
+  // Serve static frontend SPA assets if compiled
+  const potentialDistPaths = [
+    path.resolve(process.cwd(), 'frontend/dist'),
+    path.resolve(__dirname, '../../../frontend/dist'),
+    path.resolve(__dirname, '../../frontend/dist'),
+    path.resolve(__dirname, '../frontend/dist'),
+  ];
+  const staticPath = potentialDistPaths.find((p) => fs.existsSync(p));
+
+  if (staticPath) {
+    app.use(express.static(staticPath));
+    app.get('*', (req, res, next) => {
+      if (
+        req.path.startsWith('/api') ||
+        req.path.startsWith('/health') ||
+        req.path.startsWith('/i/')
+      ) {
+        return next();
+      }
+      res.sendFile(path.join(staticPath, 'index.html'));
+    });
+  }
 
   // Error handling
   app.use(notFoundHandler);

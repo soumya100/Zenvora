@@ -48,6 +48,15 @@ export interface ZenvoraInfoboxAttribute {
   value: string;
 }
 
+export interface ZenvoraDirectAnswer {
+  type: 'calculator' | 'converter' | 'currency' | 'clock' | 'dictionary' | 'age' | 'fact';
+  title: string;
+  answer: string;
+  subtext?: string;
+  icon?: string;
+  details?: Record<string, any>;
+}
+
 export interface ZenvoraInfobox {
   title: string;
   content: string;
@@ -63,6 +72,9 @@ export interface ZenvoraSearchResponse {
   page: number;
   results: ZenvoraResultItem[];
   answers: string[];
+  directAnswer?: ZenvoraDirectAnswer;
+  spellingCorrection?: string;
+  relatedQuestions?: string[];
   infoboxes: ZenvoraInfobox[];
   suggestions: string[];
   unresponsiveEngines: string[];

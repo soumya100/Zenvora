@@ -79,7 +79,7 @@ describe('Search API Endpoints', () => {
       const testCases = [
         { q: 'youtube', expectedDomain: 'youtube.com' },
         { q: 'github', expectedDomain: 'github.com' },
-        { q: 'react', expectedDomain: 'react.dev' },
+        { q: 'reddit', expectedDomain: 'reddit.com' },
       ];
 
       for (const tc of testCases) {

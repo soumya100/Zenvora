@@ -42,6 +42,15 @@ export interface SearchInfoboxAttribute {
   value: string;
 }
 
+export interface SearchDirectAnswer {
+  type: 'calculator' | 'converter' | 'currency' | 'clock' | 'dictionary' | 'age' | 'fact';
+  title: string;
+  answer: string;
+  subtext?: string;
+  icon?: string;
+  details?: Record<string, any>;
+}
+
 export interface SearchInfobox {
   title: string;
   content: string;
@@ -52,13 +61,17 @@ export interface SearchInfobox {
 }
 
 export interface QueryIntent {
-  primaryIntent: SearchCategory | 'navigational';
+  primaryIntent: SearchCategory | 'navigational' | 'person' | 'entity';
   subject: string;
   contentType?: string;
   qualityModifiers: string[];
   styleModifiers: string[];
   targetDevice?: string;
   isQuestion: boolean;
+  isPerson?: boolean;
+  isEntity?: boolean;
+  entityType?: 'person' | 'organization' | 'place' | 'concept' | 'general';
+  entityAttributes?: string[];
   rawQuery: string;
 }
 
@@ -68,6 +81,9 @@ export interface SearchResponse {
   page: number;
   results: SearchResultItem[];
   answers: string[];
+  directAnswer?: SearchDirectAnswer;
+  spellingCorrection?: string;
+  relatedQuestions?: string[];
   infoboxes: SearchInfobox[];
   suggestions: string[];
   unresponsiveEngines: string[];

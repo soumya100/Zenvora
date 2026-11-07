@@ -7,7 +7,12 @@
     "build": "npm run build --prefix frontend",
     "build:all": "npm run build --prefix backend && npm run build --prefix frontend",
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "test": "npm test --prefix backend && npm test --prefix frontend"
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "test:unit": "npm --prefix backend test && npm --prefix frontend test",
+    "test:smoke": "npm --prefix backend test tests/smoke.test.ts",
+    "test:regression": "npm --prefix backend test tests/regression.test.ts",
+    "test:e2e": "npm --prefix frontend run test:e2e",
+    "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
     "axios": "^1.7.9",

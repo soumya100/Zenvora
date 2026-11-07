@@ -5,6 +5,8 @@ import { ImageGrid } from '../components/ImageGrid';
 import { VideoGrid } from '../components/VideoGrid';
 import { NewsList } from '../components/NewsList';
 import { InstantAnswer } from '../components/InstantAnswer';
+import { DirectAnswerCard } from '../components/DirectAnswerCard';
+import { RelatedQuestions } from '../components/RelatedQuestions';
 import { AiOverview } from '../components/AiOverview';
 import { VisualHighlights } from '../components/VisualHighlights';
 import { Pagination } from '../components/Pagination';
@@ -101,6 +103,27 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
 
       {!isLoading && !error && results.length > 0 && (!response || response.category === category) && (
         <div className="max-w-4xl">
+          {/* Google-style "Did You Mean?" Spell Correction */}
+          {response?.spellingCorrection && (
+            <div className="mb-4 text-sm text-slate-600 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+              <span>Showing results for </span>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">{query}</span>
+              <span className="mx-2 text-slate-400">•</span>
+              <span>Did you mean: </span>
+              <button
+                onClick={() => onNewSearch(response.spellingCorrection!)}
+                className="font-semibold text-cyan-600 dark:text-cyan-400 hover:underline italic cursor-pointer inline-flex items-center gap-0.5"
+              >
+                {response.spellingCorrection}
+              </button>
+            </div>
+          )}
+
+          {/* Google-style OneBox Direct Answer (Calculator, Currency, Unit, Clock, Dictionary, Age, Fact) */}
+          {response?.directAnswer && category === 'general' && (
+            <DirectAnswerCard directAnswer={response.directAnswer} />
+          )}
+
           {category === 'general' && (
             <AiOverview query={query} category={category} searchResults={results} />
           )}
@@ -125,7 +148,19 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
             <NewsList items={results} />
           ) : (
             <div className="space-y-4">
-              {results.map((item) => (
+              {results.slice(0, 3).map((item) => (
+                <ResultCard key={item.id} item={item} query={query} />
+              ))}
+
+              {/* Google-style "People Also Ask" Interactive Discovery Pills */}
+              {response?.relatedQuestions && response.relatedQuestions.length > 0 && category === 'general' && (
+                <RelatedQuestions
+                  questions={response.relatedQuestions}
+                  onSelectQuestion={onNewSearch}
+                />
+              )}
+
+              {results.slice(3).map((item) => (
                 <ResultCard key={item.id} item={item} query={query} />
               ))}
             </div>

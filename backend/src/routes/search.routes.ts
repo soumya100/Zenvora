@@ -3,6 +3,7 @@ import { searchQuerySchema, suggestionQuerySchema } from '../schemas/validation'
 import { searxngService } from '../services/searxng.service';
 import { suggestionService } from '../services/suggestion.service';
 import { aiService } from '../services/ai.service';
+import { instantAnswerService } from '../services/instantAnswer.service';
 import { searchRateLimiter } from '../middleware/rateLimiter';
 import { ZenvoraCategory } from '../types/search';
 
@@ -77,6 +78,32 @@ router.get(
       // Augment with AI classification metadata if present
       if (aiIntent) {
         results.aiIntent = aiIntent;
+      }
+
+      // Resolve Google-style Instant Intelligence (OneBox Direct Answers, Related Questions, Spell Check)
+      if (page === 1) {
+        try {
+          const [directAnswer, spellingCorrection] = await Promise.all([
+            instantAnswerService.resolveInstantAnswer(q, results.queryIntent),
+            instantAnswerService.detectSpellingCorrection(q),
+          ]);
+
+          if (directAnswer) {
+            results.directAnswer = directAnswer;
+            results.answers = [directAnswer.answer];
+          }
+
+          if (spellingCorrection) {
+            results.spellingCorrection = spellingCorrection;
+          }
+
+          results.relatedQuestions = instantAnswerService.generateRelatedQuestions(
+            q,
+            results.queryIntent
+          );
+        } catch {
+          // Instant intelligence failure must never break core search
+        }
       }
 
       res.json(results);
