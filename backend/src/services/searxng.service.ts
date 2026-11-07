@@ -13,6 +13,7 @@ import {
   QueryIntent,
   KNOWN_WALLPAPER_DOMAINS,
 } from './queryUnderstanding.service';
+import { findKnownOfficialSite } from './officialSites.service';
 
 interface CacheEntry {
   response: ZenvoraSearchResponse;
@@ -121,14 +122,52 @@ function isExplicitWikiQuery(query: string): boolean {
 }
 
 /**
+ * Determine if a URL points to the canonical root domain homepage (e.g. https://react.dev/ or https://tailwindcss.com/)
+ */
+function isRootHomepage(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    const p = parsed.pathname;
+    return p === '' || p === '/' || p === '/index.html' || p === '/index.htm';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Detect domain or direct URL navigational intent
  */
 function resolveNavigationalIntent(query: string, page: number = 1): ZenvoraResultItem | null {
   if (page !== 1) return null;
   const cleanQ = query.trim().toLowerCase();
 
-  // Pattern for valid domain or URL: e.g. youtube.com, github.com, https://openai.com
-  const domainMatch = cleanQ.match(
+  // 1. Check verified known official websites database
+  const known = findKnownOfficialSite(query);
+  if (known) {
+    return {
+      id: `nav-known-${known.id}`,
+      title: known.title,
+      url: known.url,
+      domain: known.domain,
+      snippet: known.snippet,
+      engine: 'official',
+      engines: ['official', 'verified'],
+      category: known.category || 'general',
+      isNavigational: true,
+      score: 350,
+    };
+  }
+
+  // 2. Pattern for valid domain or URL: e.g. youtube.com, github.com, https://openai.com
+  const strippedQ = cleanQ
+    .replace(
+      /\b(official site|official website|official|website|site|homepage|home page|login|signin|sign in|portal|web)\b/gi,
+      ''
+    )
+    .trim();
+  const targetToMatch = strippedQ || cleanQ;
+
+  const domainMatch = targetToMatch.match(
     /^(?:https?:\/\/)?([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*(?:\.[a-z]{2,}))(?::\d+)?(?:\/.*)?$/i
   );
 
@@ -136,8 +175,8 @@ function resolveNavigationalIntent(query: string, page: number = 1): ZenvoraResu
     const rawHostname = domainMatch[1].replace(/^www\./i, '');
     // Ensure valid domain structure (at least one dot and standard TLD)
     if (rawHostname.includes('.')) {
-      const canonicalUrl = cleanQ.startsWith('http://') || cleanQ.startsWith('https://')
-        ? cleanQ
+      const canonicalUrl = targetToMatch.startsWith('http://') || targetToMatch.startsWith('https://')
+        ? targetToMatch
         : `https://${rawHostname}/`;
 
       const domain = extractDomain(canonicalUrl);
@@ -154,6 +193,7 @@ function resolveNavigationalIntent(query: string, page: number = 1): ZenvoraResu
         engines: ['navigation', 'verified'],
         category: 'general',
         isNavigational: true,
+        score: 350,
       };
     }
   }
@@ -247,12 +287,26 @@ async function fetchDuckDuckGoInstantAndRelated(
 
     const data = res.data;
     if (!data) return [];
+    const cleanLowerQ = query.trim().toLowerCase();
 
     if (page === 1 && Array.isArray(data.Results)) {
       for (const r of data.Results) {
         if (r.FirstURL && r.FirstURL.startsWith('http')) {
           const u = cleanUrl(r.FirstURL);
           const domain = extractDomain(u);
+          // Never inject internal search engine pages as search results unless user specifically searched for them
+          if (
+            (domain.includes('duckduckgo.com') ||
+              domain.includes('bing.com') ||
+              domain.includes('google.com') ||
+              domain.includes('yahoo.com')) &&
+            !cleanLowerQ.includes('duckduckgo') &&
+            !cleanLowerQ.includes('bing') &&
+            !cleanLowerQ.includes('google')
+          ) {
+            continue;
+          }
+
           items.push({
             id: `ddg-res-${domain}-${Math.random().toString(36).substring(2, 6)}`,
             title: sanitizeSnippet(r.Text || data.Heading || `${query} — Official Resource`),
@@ -270,23 +324,40 @@ async function fetchDuckDuckGoInstantAndRelated(
 
     if (Array.isArray(data.RelatedTopics)) {
       data.RelatedTopics.forEach((rt: any, idx: number) => {
-        if (rt.FirstURL && rt.Text && rt.FirstURL.startsWith('http')) {
-          const u = cleanUrl(rt.FirstURL);
-          const domain = extractDomain(u);
-          const text = sanitizeSnippet(rt.Text);
-          const parts = text.split(' - ');
-          const title = parts.length > 1 ? parts[0] : `${query} — Reference`;
-          const snippet = parts.length > 1 ? parts.slice(1).join(' - ') : text;
-          items.push({
-            id: `ddg-topic-${page}-${idx}`,
-            title,
-            url: u,
-            domain,
-            snippet,
-            engine: 'duckduckgo',
-            engines: ['duckduckgo', 'knowledge'],
-            category: 'general',
-          });
+        const topicList = Array.isArray(rt.Topics) ? rt.Topics : [rt];
+        for (const topic of topicList) {
+          if (topic.FirstURL && topic.Text && topic.FirstURL.startsWith('http')) {
+            const u = cleanUrl(topic.FirstURL);
+            const domain = extractDomain(u);
+
+            // Filter internal redirect and disambiguation URLs
+            if (
+              (domain.includes('duckduckgo.com') ||
+                domain.includes('bing.com') ||
+                domain.includes('google.com') ||
+                domain.includes('yahoo.com')) &&
+              !cleanLowerQ.includes('duckduckgo') &&
+              !cleanLowerQ.includes('bing') &&
+              !cleanLowerQ.includes('google')
+            ) {
+              continue;
+            }
+
+            const text = sanitizeSnippet(topic.Text);
+            const parts = text.split(' - ');
+            const title = parts.length > 1 ? parts[0] : `${query} — Reference`;
+            const snippet = parts.length > 1 ? parts.slice(1).join(' - ') : text;
+            items.push({
+              id: `ddg-topic-${page}-${idx}`,
+              title,
+              url: u,
+              domain,
+              snippet,
+              engine: 'duckduckgo',
+              engines: ['duckduckgo', 'knowledge'],
+              category: 'general',
+            });
+          }
         }
       });
     }
@@ -1035,6 +1106,8 @@ function rankAndDeduplicateResults(
   const cleanQ = query.toLowerCase().trim();
   const qTokens = cleanQ.split(/\s+/).filter((t) => t.length > 1);
   const intent = queryIntent || parseQueryIntent(query);
+  const isWikiQuery = isExplicitWikiQuery(cleanQ);
+  const knownOfficial = findKnownOfficialSite(query);
 
   // 1. Deduplicate by canonical URL
   const seenUrls = new Set<string>();
@@ -1057,7 +1130,36 @@ function rankAndDeduplicateResults(
 
     // Signal 1: Navigational / Official Boost
     if (item.isNavigational) {
-      score += 150;
+      score += 260;
+    }
+
+    // Signal 1b: Known Official Site Target Match
+    if (knownOfficial) {
+      const isOfficialDomain =
+        domainLower === knownOfficial.domain ||
+        domainLower.endsWith(`.${knownOfficial.domain}`) ||
+        knownOfficial.domain.endsWith(`.${domainLower}`);
+
+      if (isOfficialDomain) {
+        item.isNavigational = true;
+        score += 280;
+
+        // Canonical root homepage priority (+120) over deep subpages
+        const isRoot =
+          item.url.replace(/\/$/, '').toLowerCase() === knownOfficial.url.replace(/\/$/, '').toLowerCase() ||
+          isRootHomepage(item.url);
+        if (isRoot) {
+          score += 120;
+        }
+      } else {
+        // Demote third-party package hubs & encyclopedias below the official brand/site
+        if (domainLower.includes('wikipedia.org') && !isWikiQuery) {
+          score -= 70;
+        }
+        if (domainLower.includes('npmjs.com') || domainLower.includes('pypi.org')) {
+          score -= 35;
+        }
+      }
     }
 
     // Signal 2: Direct domain match to query
@@ -1066,13 +1168,16 @@ function rankAndDeduplicateResults(
       domainLower.startsWith(`${cleanQ}.`) ||
       domainLower === `www.${cleanQ}`
     ) {
-      score += 90;
+      score += 140;
+      if (isRootHomepage(item.url)) {
+        score += 80;
+      }
     } else if (domainLower.includes(cleanQ)) {
-      score += 45;
+      score += 50;
+      if (isRootHomepage(item.url)) {
+        score += 40;
+      }
     }
-
-    // Detect encyclopedic query intent
-    const isWikiQuery = isExplicitWikiQuery(cleanQ);
 
     // Signal 3: Intent-Specific Relevance Scoring
     if (intent.primaryIntent === 'images' || intent.contentType === 'wallpapers') {
@@ -1561,14 +1666,16 @@ async function fetchLiveMetasearch(
     }
   }
 
-  // 3. General Web Search (Multi-Tier Execution)
-  if (category === 'general' || results.length === 0) {
-    // Navigational intent: if query is a domain or website URL, add top direct navigational card
+  // 2b. Navigational intent: if query is an official site or domain, ensure verified official site card is present
+  if (page === 1 && (category === 'general' || category === 'it' || results.length === 0)) {
     const directNav = resolveNavigationalIntent(query, page);
     if (directNav) {
-      results.push(directNav);
+      results.unshift(directNav);
     }
+  }
 
+  // 3. General Web Search (Multi-Tier Execution)
+  if (category === 'general' || results.length === 0) {
     let webResults: ZenvoraResultItem[] = [];
 
     // Visual Highlights for Wallpapers, Visual Queries, and People/Entities
@@ -1634,6 +1741,12 @@ async function fetchLiveMetasearch(
       fetchDuckDuckGoHtmlResults(query, page),
       fetchWikipediaSearchResults(query, page),
     ];
+
+    if (page === 1) {
+      searchTasks.push(
+        fetchDuckDuckGoOfficialResult(query).then((item) => (item ? [item] : []))
+      );
+    }
 
     if (page === 1 && (queryIntent.isPerson || queryIntent.primaryIntent === 'person')) {
       searchTasks.push(fetchEntityProfileLinks(query, queryIntent));
@@ -1800,6 +1913,15 @@ export class SearxngService {
         });
 
         const queryIntent = parseQueryIntent(query);
+
+        // Ensure verified official site card is present at Rank #1 for site queries
+        if (page === 1 && (category === 'general' || category === 'it')) {
+          const directNav = resolveNavigationalIntent(query, page);
+          if (directNav) {
+            normalizedResults.unshift(directNav);
+          }
+        }
+
         const rankedResults = rankAndDeduplicateResults(query, normalizedResults, queryIntent);
         augmentZenvoraResults(query, category, page, rankedResults, infoboxes);
 

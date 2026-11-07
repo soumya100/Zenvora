@@ -18,14 +18,31 @@ async function runVerification() {
 
   // 1. Start Server
   const app = createApp();
-  const PORT = 3000;
-  const server = await new Promise((resolve, reject) => {
-    const s = app.listen(PORT, '127.0.0.1', (err) => {
-      if (err) return reject(err);
-      console.log(`🚀 Test Server listening at http://127.0.0.1:${PORT}`);
-      resolve(s);
+  let PORT = Number(process.env.E2E_PORT) || 3000;
+  let server;
+  try {
+    server = await new Promise((resolve, reject) => {
+      const s = app.listen(PORT, '127.0.0.1', (err) => {
+        if (err) return reject(err);
+        resolve(s);
+      });
+      s.on('error', reject);
     });
-  });
+  } catch (err) {
+    if (err.code === 'EADDRINUSE') {
+      PORT = 3005;
+      server = await new Promise((resolve, reject) => {
+        const s = app.listen(PORT, '127.0.0.1', (err) => {
+          if (err) return reject(err);
+          resolve(s);
+        });
+        s.on('error', reject);
+      });
+    } else {
+      throw err;
+    }
+  }
+  console.log(`🚀 Test Server listening at http://127.0.0.1:${PORT}`);
 
   let browser;
   let passed = 0;
@@ -190,6 +207,19 @@ async function runVerification() {
       await page.waitForSelector('h2, div[data-testid="result-card"], article, .space-y-4', { timeout: 8000 });
       await page.keyboard.press('Escape');
       await page.screenshot({ path: path.join(screenshotsDir, 'test10_home_search.png') });
+    });
+
+    // --- TEST 11: Official Site Rank #1 & Navigational Badge ---
+    await runTest('Test 11: Official Site Rank #1 & Verified Badge (react)', async (page) => {
+      await page.goto(`http://127.0.0.1:${PORT}/?q=react`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('text=Official Website', { timeout: 10000 });
+      const firstCard = await page.waitForSelector('article', { timeout: 8000 });
+      if (!firstCard) throw new Error('Result card not found');
+      const text = await firstCard.innerText();
+      if (!text.includes('react.dev')) throw new Error('react.dev domain not found in first card');
+      if (!text.includes('Official Website')) throw new Error('Official Website badge not found in first card');
+      await page.keyboard.press('Escape');
+      await page.screenshot({ path: path.join(screenshotsDir, 'test11_official_site_react.png') });
     });
 
   } finally {

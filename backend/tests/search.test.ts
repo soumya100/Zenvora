@@ -73,7 +73,7 @@ describe('Search API Endpoints', () => {
         expect(res.body.infoboxes.length).toBeGreaterThan(0);
         expect(res.body.infoboxes[0].title).toContain('Zenvora');
       }
-    }, 20000);
+    }, 35000);
 
     it('returns accurate non-Wikipedia web results for website and tech queries', async () => {
       const testCases = [

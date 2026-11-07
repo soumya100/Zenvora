@@ -89,4 +89,19 @@ test.describe('Zenvora Google-Style Search Intelligence', () => {
 
     await page.waitForFunction(() => window.location.search.includes('q=privacy'), { timeout: 8000 });
   });
+
+  test('11. Official Site Verification at Rank #1 for site queries', async ({ page }) => {
+    await page.goto('/?q=react');
+    // Top result card must have Official Website badge and point to react.dev
+    const officialBadge = page.locator('text=Official Website').first();
+    await expect(officialBadge).toBeVisible({ timeout: 12000 });
+
+    const firstResultHeading = page.locator('article h2').first();
+    await expect(firstResultHeading).toContainText(/React/i);
+
+    const firstDomain = page.locator('article span font, article span:has-text("react.dev")').first();
+    await expect(firstDomain).toBeVisible();
+
+    await page.screenshot({ path: 'e2e/screenshots/11-official-site-rank1.png', fullPage: false });
+  });
 });

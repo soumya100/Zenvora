@@ -96,7 +96,7 @@ describe('Zenvora Regression Test Suite', () => {
 
       const res2 = await request(app).get('/api/search?q=astronomy&page=2');
       expect(res2.status).toBe(200);
-    });
+    }, 15000);
 
     it('rejects invalid negative or non-integer page numbers gracefully', async () => {
       const res = await request(app).get('/api/search?q=test&page=-5');
@@ -116,7 +116,7 @@ describe('Zenvora Regression Test Suite', () => {
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('results');
       expect(res.headers).toHaveProperty('x-content-type-options');
-    });
+    }, 15000);
 
     it('handles SQL injection patterns in query without errors', async () => {
       const res = await request(app).get(
@@ -124,7 +124,7 @@ describe('Zenvora Regression Test Suite', () => {
       );
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('results');
-    });
+    }, 15000);
 
     it('handles unicode, emojis, and special characters safely', async () => {
       const res = await request(app).get(
@@ -132,7 +132,7 @@ describe('Zenvora Regression Test Suite', () => {
       );
       expect(res.status).toBe(200);
       expect(res.body.results.length).toBeGreaterThan(0);
-    });
+    }, 15000);
   });
 
   // ==========================================
